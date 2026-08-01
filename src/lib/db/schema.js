@@ -121,6 +121,10 @@ export const documents = pgTable(
     blobUrl: text("blob_url"),
     sourceUrl: text("source_url"),
     mime: text("mime"),
+    // Source text for notes and the generated brand-profile document. Kept
+    // separate from document_chunks so re-ingesting can safely delete every
+    // chunk without destroying the original.
+    body: text("body"),
     status: documentStatus("status").notNull().default("pending"),
     error: text("error"),
     // Curated onboarding order for the brand's "Start here" reading path.
