@@ -72,5 +72,9 @@ export async function queryBrandVectors({ brandId, vector, topK }) {
 /** Used when a document is deleted or re-ingested. */
 export async function deleteBrandVectors({ brandId, ids }) {
   if (!ids.length) return;
-  await brandIndex().namespace(brandNamespace(brandId)).deleteMany(ids);
+  // v8 takes an options object here, not a bare id array.
+  await brandIndex().deleteMany({
+    ids,
+    namespace: brandNamespace(brandId),
+  });
 }
