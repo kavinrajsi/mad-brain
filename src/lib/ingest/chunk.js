@@ -1,4 +1,6 @@
-import { CHUNKING } from "@/lib/ai/config";
+// Relative rather than aliased so this module can be exercised by a plain
+// node script, outside the Next bundler that resolves "@/".
+import { CHUNKING } from "../ai/config.js";
 
 /**
  * Splits text into overlapping chunks, preferring to break at a paragraph and

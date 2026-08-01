@@ -81,6 +81,7 @@ npm run dev
 | `npm run db:studio` | Browse the database |
 | `npm run setup:pinecone` | Create the vector index |
 | `npm run verify:sql` | Exercise the hand-written SQL against the dev database |
+| `npm run verify:ingest` | Exercise PDF/DOCX/text parsing and chunking (no network) |
 | `npm run lint` | ESLint (`next build` no longer lints in Next 16) |
 
 `verify:sql` is worth running after any change to `src/lib/db/queries.js`. This
