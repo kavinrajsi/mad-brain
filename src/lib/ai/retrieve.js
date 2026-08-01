@@ -33,13 +33,3 @@ export async function retrieveBrandContext({ brandId, query, topK }) {
     .map((chunk) => ({ ...chunk, score: scoreById.get(chunk.pineconeId) ?? 0 }))
     .sort((a, b) => b.score - a.score);
 }
-
-/** Formats retrieved chunks for a prompt, tagged so the model can cite them. */
-export function formatContext(chunks) {
-  return chunks
-    .map(
-      (chunk, index) =>
-        `[${index + 1}] (id: ${chunk.pineconeId}) from "${chunk.documentTitle}"\n${chunk.content}`,
-    )
-    .join("\n\n---\n\n");
-}
