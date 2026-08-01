@@ -3,6 +3,7 @@ import "server-only";
 import { RETRIEVAL } from "./config";
 import { embedQuery } from "./embed";
 import { queryBrandVectors } from "./pinecone";
+import { rankChunksByMatch } from "./rank";
 import { getChunksByPineconeIds } from "@/lib/db/queries";
 
 /**
@@ -23,13 +24,10 @@ export async function retrieveBrandContext({ brandId, query, topK }) {
 
   if (!matches.length) return [];
 
-  const scoreById = new Map(matches.map((m) => [m.id, m.score]));
   const chunks = await getChunksByPineconeIds({
     brandId,
     pineconeIds: matches.map((m) => m.id),
   });
 
-  return chunks
-    .map((chunk) => ({ ...chunk, score: scoreById.get(chunk.pineconeId) ?? 0 }))
-    .sort((a, b) => b.score - a.score);
+  return rankChunksByMatch(matches, chunks);
 }

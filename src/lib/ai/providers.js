@@ -3,7 +3,7 @@ import "server-only";
 import { createOpenAI } from "@ai-sdk/openai";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 
-import { EMBEDDING } from "./config";
+import { EMBEDDING } from "./config.js";
 
 function required(name) {
   const value = process.env[name];

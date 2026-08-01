@@ -83,7 +83,8 @@ npm run dev
 | `npm run verify:sql` | Exercise the hand-written SQL against the dev database |
 | `npm run verify:ingest` | Exercise PDF/DOCX/text parsing and chunking (no network) |
 | `npm run verify:fitcheck` | Exercise the fit-check pipeline against a mock model (no API key) |
-| `npm run verify` | All three |
+| `npm run verify:embed` | Exercise embedding batch ordering and retrieval ranking (no API key) |
+| `npm run verify` | All four |
 | `npm run lint` | ESLint (`next build` no longer lints in Next 16) |
 
 `verify:sql` is worth running after any change to `src/lib/db/queries.js`. This
