@@ -101,6 +101,64 @@ export async function consumeInvitesForEmail({ email, userId }) {
   return claimed;
 }
 
+export async function getInviteByToken(token) {
+  const [row] = await db
+    .select({
+      id: invites.id,
+      brandId: invites.brandId,
+      email: invites.email,
+      role: invites.role,
+      expiresAt: invites.expiresAt,
+      consumedAt: invites.consumedAt,
+      brandSlug: brands.slug,
+      brandName: brands.name,
+    })
+    .from(invites)
+    .innerJoin(brands, eq(brands.id, invites.brandId))
+    .where(eq(invites.token, token))
+    .limit(1);
+  return row ?? null;
+}
+
+/**
+ * Redeems an invite link for the signed-in user.
+ *
+ * The link is the primary path; the email sweep in consumeInvitesForEmail is a
+ * fallback for people who were invited after they had already signed in.
+ *
+ * The invite is deliberately NOT bound to the invited address: an admin may
+ * invite a personal address that differs from the Google account used to sign
+ * in. Possession of the single-use token is the credential.
+ */
+export async function acceptInviteByToken({ token, userId }) {
+  const invite = await getInviteByToken(token);
+  if (!invite) return { ok: false, reason: "not_found" };
+  if (invite.consumedAt) return { ok: false, reason: "already_used" };
+  if (invite.expiresAt <= new Date()) return { ok: false, reason: "expired" };
+
+  await db
+    .insert(brandMembers)
+    .values({ brandId: invite.brandId, userId, role: invite.role })
+    .onConflictDoNothing();
+
+  // Guarded by consumed_at IS NULL so two concurrent redemptions cannot both
+  // report success.
+  const stamped = await db
+    .update(invites)
+    .set({ consumedAt: new Date() })
+    .where(and(eq(invites.id, invite.id), isNull(invites.consumedAt)))
+    .returning({ id: invites.id });
+
+  if (!stamped.length) return { ok: false, reason: "already_used" };
+
+  return {
+    ok: true,
+    brandSlug: invite.brandSlug,
+    brandName: invite.brandName,
+    role: invite.role,
+  };
+}
+
 export async function getBrandProfile(brandId) {
   const [row] = await db
     .select()
