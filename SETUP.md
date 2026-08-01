@@ -80,7 +80,13 @@ npm run dev
 | `npm run db:migrate` | Apply migrations to Neon |
 | `npm run db:studio` | Browse the database |
 | `npm run setup:pinecone` | Create the vector index |
+| `npm run verify:sql` | Exercise the hand-written SQL against the dev database |
 | `npm run lint` | ESLint (`next build` no longer lints in Next 16) |
+
+`verify:sql` is worth running after any change to `src/lib/db/queries.js`. This
+is untyped JavaScript, so a wrong query builder call compiles and lints
+cleanly and only fails when a user hits it — that script exists because two
+such bugs shipped past both checks.
 
 ## Things that will bite you if changed carelessly
 
