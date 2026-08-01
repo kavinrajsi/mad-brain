@@ -25,9 +25,13 @@ const SOURCE_LABELS = {
 
 export default function DocumentList({ brandSlug, documents, isAdmin }) {
   const router = useRouter();
-  const [live, setLive] = useState(documents);
 
-  useEffect(() => setLive(documents), [documents]);
+  // Polled status overlaid on the server-rendered rows. Kept as an overlay
+  // rather than a copy of `documents`, so fresh server data always wins without
+  // an effect that syncs props into state.
+  const [polled, setPolled] = useState({});
+
+  const live = documents.map((doc) => ({ ...doc, ...(polled[doc.id] ?? {}) }));
 
   const settling = live.some(
     (doc) => doc.status === "pending" || doc.status === "processing",
@@ -40,19 +44,16 @@ export default function DocumentList({ brandSlug, documents, isAdmin }) {
     const timer = setInterval(async () => {
       const response = await fetch(`/api/brands/${brandSlug}/documents`);
       if (!response.ok) return;
-      const { documents: rows } = await response.json();
-      const byId = new Map(rows.map((row) => [row.id, row]));
 
-      setLive((prev) => {
-        const next = prev.map((doc) => ({ ...doc, ...(byId.get(doc.id) ?? {}) }));
-        const stillSettling = next.some(
-          (doc) => doc.status === "pending" || doc.status === "processing",
-        );
-        // Pull fresh server data once everything has settled, so chunk counts
-        // and the reading path reflect the finished ingest.
-        if (!stillSettling) router.refresh();
-        return next;
-      });
+      const { documents: rows } = await response.json();
+      setPolled(Object.fromEntries(rows.map((row) => [row.id, row])));
+
+      // Pull fresh server data once everything has settled, so chunk counts and
+      // the reading path reflect the finished ingest.
+      const stillSettling = rows.some(
+        (row) => row.status === "pending" || row.status === "processing",
+      );
+      if (!stillSettling) router.refresh();
     }, 2500);
 
     return () => clearInterval(timer);
