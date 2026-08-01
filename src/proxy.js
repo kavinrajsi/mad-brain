@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 import { SESSION_COOKIE } from "@/lib/auth/constants";
 
-const PUBLIC_PATHS = ["/login", "/api/auth/session"];
+const PUBLIC_PATHS = ["/login"];
 
 /**
  * Optimistic gate only.
@@ -35,12 +35,14 @@ export function proxy(request) {
 export const config = {
   matcher: [
     /*
-     * Everything except:
-     *   _next/static, _next/image, favicon.ico, public asset extensions
-     *   api/blob/*  — upload handshake routes stay off the proxy so request
-     *                 bodies are never buffered (bodies over the buffer limit
-     *                 are truncated silently, not rejected).
+     * Page routes only. Excluded:
+     *   _next/static, _next/image, favicon.ico, static asset extensions
+     *   api/*  — every API route authorises itself via the data access layer
+     *            and answers 401/403 as JSON. Redirecting them here would send
+     *            a fetch() an HTML login page to parse instead of an error, and
+     *            it also keeps request bodies out of the proxy buffer, which
+     *            truncates oversized bodies silently rather than rejecting them.
      */
-    "/((?!_next/static|_next/image|favicon.ico|api/blob|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|woff2?)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|api/|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|woff2?)$).*)",
   ],
 };

@@ -43,10 +43,11 @@ export async function POST(request) {
           tokenPayload: JSON.stringify({ brandId: access.brandId }),
         };
       },
-      onUploadCompleted: async () => {
-        // The document row is created by the client in a follow-up call, so
-        // there is nothing to do here. Blob requires the callback to exist.
-      },
+      // onUploadCompleted is deliberately omitted. It is optional, and supplying
+      // it makes the SDK derive a callbackUrl from this request — which Vercel
+      // Blob then tries to reach. On localhost that host is unreachable, so it
+      // would break local development for no benefit: the document row is
+      // created by an authenticated follow-up call from the client instead.
     });
 
     return Response.json(result);
