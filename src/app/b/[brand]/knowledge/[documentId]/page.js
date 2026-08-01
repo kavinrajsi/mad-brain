@@ -88,15 +88,15 @@ export default async function DocumentPage({ params }) {
             : "Still indexing — refresh in a moment."}
         </p>
       ) : (
-        <article className="mt-8 space-y-6">
-          {chunks.map((chunk) => (
-            <p
-              key={chunk.ordinal}
-              className="whitespace-pre-wrap text-sm leading-7 text-zinc-700 dark:text-zinc-300"
-            >
-              {chunk.content}
-            </p>
-          ))}
+        <article className="mt-8">
+          {/*
+            Render the extracted source text, not the chunks. Chunks overlap by
+            design so no passage falls into a retrieval gap — printing them in
+            sequence would repeat a paragraph at every boundary.
+          */}
+          <p className="whitespace-pre-wrap text-sm leading-7 text-zinc-700 dark:text-zinc-300">
+            {doc.body ?? chunks.map((chunk) => chunk.content).join("\n\n")}
+          </p>
         </article>
       )}
     </main>

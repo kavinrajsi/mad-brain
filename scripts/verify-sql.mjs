@@ -147,6 +147,36 @@ await check("guarded consume cannot double-succeed", async () => {
   return "1 then 0";
 });
 
+await check("owner count query backs the last-owner guard", async () => {
+  const second = `uid-${SUFFIX}-2`;
+  await db
+    .insert(users)
+    .values({ id: second, email: `second+${SUFFIX}@example.com` });
+  await db
+    .insert(brandMembers)
+    .values({ brandId, userId: second, role: "admin" });
+
+  const owners = await db
+    .select({ userId: brandMembers.userId })
+    .from(brandMembers)
+    .where(and(eq(brandMembers.brandId, brandId), eq(brandMembers.role, "owner")));
+
+  const [target] = await db
+    .select({ role: brandMembers.role })
+    .from(brandMembers)
+    .where(and(eq(brandMembers.brandId, brandId), eq(brandMembers.userId, second)))
+    .limit(1);
+
+  if (owners.length !== 1) throw new Error(`counted ${owners.length} owners, expected 1`);
+  if (target.role !== "admin") throw new Error(`target role was ${target.role}`);
+
+  await db
+    .delete(brandMembers)
+    .where(and(eq(brandMembers.brandId, brandId), eq(brandMembers.userId, second)));
+  await db.delete(users).where(eq(users.id, second));
+  return "1 owner, target role resolved";
+});
+
 let docId;
 await check("insert document + chunks", async () => {
   const [doc] = await db

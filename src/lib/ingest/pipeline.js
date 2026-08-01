@@ -76,7 +76,15 @@ export async function ingestDocument(documentId) {
 
     await db
       .update(documents)
-      .set({ status: "ready", error: null, updatedAt: new Date() })
+      .set({
+        // Persist the extracted text so the reader can show the document as it
+        // actually reads. Chunks overlap on purpose, so rendering them in
+        // sequence repeats a passage at every boundary.
+        body: text,
+        status: "ready",
+        error: null,
+        updatedAt: new Date(),
+      })
       .where(eq(documents.id, doc.id));
 
     return { chunks: rows.length };

@@ -85,6 +85,26 @@ export async function revokeInviteAction(_prevState, formData) {
   return { ok: true };
 }
 
+/** Current role of another member, plus how many owners the brand has left. */
+async function memberContext(brandId, userId) {
+  const [target] = await db
+    .select({ role: brandMembers.role })
+    .from(brandMembers)
+    .where(
+      and(eq(brandMembers.brandId, brandId), eq(brandMembers.userId, userId)),
+    )
+    .limit(1);
+
+  const owners = await db
+    .select({ userId: brandMembers.userId })
+    .from(brandMembers)
+    .where(
+      and(eq(brandMembers.brandId, brandId), eq(brandMembers.role, "owner")),
+    );
+
+  return { targetRole: target?.role ?? null, ownerCount: owners.length };
+}
+
 export async function changeRoleAction(_prevState, formData) {
   const slug = String(formData.get("brandSlug") ?? "");
   const access = await getBrandAccess(slug, "admin");
@@ -97,8 +117,22 @@ export async function changeRoleAction(_prevState, formData) {
   if (userId === access.userId) {
     return { error: "You cannot change your own role." };
   }
+
+  const { targetRole, ownerCount } = await memberContext(
+    access.brandId,
+    userId,
+  );
+  if (!targetRole) return { error: "That person is not a member." };
+
   if (role.data === "owner" && access.role !== "owner") {
     return { error: "Only an owner can promote someone to owner." };
+  }
+  // Without this an admin could demote every owner and take the brand over.
+  if (targetRole === "owner" && access.role !== "owner") {
+    return { error: "Only an owner can change another owner's role." };
+  }
+  if (targetRole === "owner" && role.data !== "owner" && ownerCount <= 1) {
+    return { error: "A brand must keep at least one owner." };
   }
 
   await db
@@ -123,6 +157,19 @@ export async function removeMemberAction(_prevState, formData) {
   const userId = String(formData.get("userId") ?? "");
   if (userId === access.userId) {
     return { error: "You cannot remove yourself." };
+  }
+
+  const { targetRole, ownerCount } = await memberContext(
+    access.brandId,
+    userId,
+  );
+  if (!targetRole) return { error: "That person is not a member." };
+
+  if (targetRole === "owner" && access.role !== "owner") {
+    return { error: "Only an owner can remove another owner." };
+  }
+  if (targetRole === "owner" && ownerCount <= 1) {
+    return { error: "A brand must keep at least one owner." };
   }
 
   await db
