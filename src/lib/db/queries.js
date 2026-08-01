@@ -1,6 +1,6 @@
 import "server-only";
 
-import { and, asc, desc, eq, gt, isNull, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gt, inArray, isNull, sql } from "drizzle-orm";
 
 import { db } from "./client";
 import {
@@ -43,9 +43,12 @@ export async function createBrand({ name, ownerId }) {
 
       return brand;
     } catch (error) {
-      const isSlugTaken = String(error?.message ?? "").includes(
-        "brands_slug_unique",
-      );
+      // 23505 = unique_violation. The driver wraps the Postgres error, so the
+      // code and constraint live on `cause` — the top-level message is only a
+      // generic "Failed query" and matching against it silently never fires.
+      const cause = error?.cause;
+      const isSlugTaken =
+        cause?.code === "23505" && cause?.constraint === "brands_slug_unique";
       if (!isSlugTaken) throw error;
       slug = `${base}-${attempt + 2}`;
     }
@@ -234,7 +237,9 @@ export async function getChunksByPineconeIds({ brandId, pineconeIds }) {
     .where(
       and(
         eq(documentChunks.brandId, brandId),
-        sql`${documentChunks.pineconeId} = any(${pineconeIds})`,
+        // inArray, not `= any(...)`: Drizzle expands a JS array into a tuple
+        // `($1, $2)`, which is invalid as the argument to any().
+        inArray(documentChunks.pineconeId, pineconeIds),
       ),
     );
 }
