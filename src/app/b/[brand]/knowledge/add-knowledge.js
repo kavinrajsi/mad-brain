@@ -41,7 +41,9 @@ export default function AddKnowledge({ brandSlug }) {
       // Straight to Blob — the file never passes through our server. Private
       // access, because brand books are confidential: the URL alone grants
       // nothing without a token.
-      const blob = await upload(file.name, file, {
+      // Stored under the brand's prefix. Both the token route and document
+      // creation require it, so one brand's files stay in one brand's folder.
+      const blob = await upload(`${brandSlug}/${file.name}`, file, {
         access: "private",
         handleUploadUrl: "/api/blob/upload",
         clientPayload: JSON.stringify({ brandSlug }),

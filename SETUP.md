@@ -84,6 +84,7 @@ npm run dev
 | `npm run verify:ingest` | Exercise PDF/DOCX/text parsing and chunking (no network) |
 | `npm run verify:fitcheck` | Exercise the fit-check pipeline against a mock model (no API key) |
 | `npm run verify:embed` | Exercise embedding batch ordering and retrieval ranking (no API key) |
+| `npm run verify:urlguard` | Exercise the SSRF and blob-ownership guards (no network) |
 | `npm run verify` | All four |
 | `npm run lint` | ESLint (`next build` no longer lints in Next 16) |
 

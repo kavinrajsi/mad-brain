@@ -6,6 +6,7 @@ import { authorizeBrandApi } from "@/lib/auth/dal";
 import { db } from "@/lib/db/client";
 import { documents } from "@/lib/db/schema";
 import { ingestDocument } from "@/lib/ingest/pipeline";
+import { assertBrandBlobUrl, assertPublicHttpUrl } from "@/lib/ingest/url-guard";
 
 // Ingestion runs in after(), whose budget is this route's maxDuration. A large
 // brand book takes far longer than the default.
@@ -41,6 +42,21 @@ export async function POST(request, { params }) {
   } catch (error) {
     return Response.json(
       { error: "invalid_payload", detail: error?.issues ?? null },
+      { status: 400 },
+    );
+  }
+
+  // Both URLs arrive from the browser, so both are checked here rather than at
+  // fetch time: a pasted page must be a public http(s) host, and an uploaded
+  // file must be a private blob stored under this brand's prefix.
+  try {
+    if (payload.sourceType === "url") assertPublicHttpUrl(payload.sourceUrl);
+    if (payload.sourceType === "upload") {
+      assertBrandBlobUrl(payload.blobUrl, slug);
+    }
+  } catch (error) {
+    return Response.json(
+      { error: String(error?.message ?? error) },
       { status: 400 },
     );
   }

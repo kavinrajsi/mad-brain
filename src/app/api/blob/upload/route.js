@@ -1,6 +1,7 @@
 import { handleUpload } from "@vercel/blob/client";
 
 import { getBrandAccess } from "@/lib/auth/dal";
+import { brandBlobPrefix } from "@/lib/ingest/url-guard";
 
 /**
  * Issues a short-lived token so the browser can upload straight to Blob.
@@ -20,7 +21,7 @@ export async function POST(request) {
     const result = await handleUpload({
       body,
       request,
-      onBeforeGenerateToken: async (_pathname, clientPayload) => {
+      onBeforeGenerateToken: async (pathname, clientPayload) => {
         const { brandSlug } = JSON.parse(clientPayload ?? "{}");
 
         // Re-checked here because the client chose the brand — a valid session
@@ -28,6 +29,13 @@ export async function POST(request) {
         const access = await getBrandAccess(brandSlug, "admin");
         if (!access) {
           throw new Error("You do not have permission to upload to this brand.");
+        }
+
+        // The token is bound to this pathname, so pinning the prefix here is
+        // what stops one brand writing into another brand's folder. Document
+        // creation checks the same prefix on the way back in.
+        if (!pathname.startsWith(brandBlobPrefix(brandSlug))) {
+          throw new Error("Upload path does not match this brand.");
         }
 
         return {

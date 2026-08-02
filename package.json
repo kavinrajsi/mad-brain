@@ -14,8 +14,9 @@
     "verify:sql": "node scripts/verify-sql.mjs",
     "verify:ingest": "node --conditions=react-server scripts/verify-ingest.mjs",
     "verify:fitcheck": "node scripts/verify-fitcheck.mjs",
-    "verify": "npm run verify:sql && npm run verify:ingest && npm run verify:fitcheck && npm run verify:embed",
-    "verify:embed": "node --conditions=react-server scripts/verify-embed.mjs"
+    "verify": "npm run verify:sql && npm run verify:ingest && npm run verify:fitcheck && npm run verify:embed && npm run verify:urlguard",
+    "verify:embed": "node --conditions=react-server scripts/verify-embed.mjs",
+    "verify:urlguard": "node scripts/verify-url-guard.mjs"
   },
   "dependencies": {
     "@ai-sdk/openai": "^4.0.27",

@@ -9,6 +9,7 @@ import { db } from "@/lib/db/client";
 import { documentChunks, documents } from "@/lib/db/schema";
 import { chunkText } from "./chunk";
 import { extractText, htmlToText } from "./parse";
+import { fetchGuardedText } from "./url-guard";
 
 const MAX_FETCH_BYTES = 25 * 1024 * 1024;
 
@@ -40,12 +41,15 @@ export async function ingestDocument(documentId) {
     const text = await loadText(doc);
     if (!text) throw new Error("No readable text found in this source.");
 
-    await clearExistingChunks(doc);
-
     const pieces = chunkText(text);
     if (!pieces.length) throw new Error("Document produced no chunks.");
 
     const embeddings = await embedChunks(pieces);
+
+    // Cleared only once the replacement is in hand. Clearing first means a
+    // transient embedding failure on re-ingest leaves a document that was
+    // `ready` with no chunks and no vectors — silently unretrievable.
+    await clearExistingChunks(doc);
 
     const rows = pieces.map((content, ordinal) => ({
       id: randomUUID(),
@@ -125,15 +129,10 @@ async function loadText(doc) {
   }
 
   if (doc.sourceType === "url") {
-    const response = await fetch(doc.sourceUrl, {
-      headers: { "User-Agent": "MadbrainBot/1.0" },
-      redirect: "follow",
+    const { text } = await fetchGuardedText(doc.sourceUrl, {
+      maxBytes: MAX_FETCH_BYTES,
     });
-    if (!response.ok) {
-      throw new Error(`Could not fetch ${doc.sourceUrl} (${response.status})`);
-    }
-    const html = await response.text();
-    return htmlToText(html);
+    return htmlToText(text);
   }
 
   if (!doc.blobUrl) throw new Error("Document has no file attached.");
