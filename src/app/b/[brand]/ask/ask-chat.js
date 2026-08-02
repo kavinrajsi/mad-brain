@@ -2,7 +2,11 @@
 
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
+import Link from "next/link";
+
 import { useState } from "react";
+
+import Markdown from "@/components/markdown";
 
 const STARTERS = [
   "What does this brand refuse to do?",
@@ -53,13 +57,46 @@ export default function AskChat({ brandSlug, families, defaultModelId }) {
             <p className="font-mono text-xs uppercase tracking-wider text-zinc-400">
               {message.role === "user" ? "You" : "Brand"}
             </p>
-            <div className="mt-1 whitespace-pre-wrap text-sm leading-6 text-zinc-800 dark:text-zinc-200">
-              {message.parts
-                .filter((part) => part.type === "text")
-                .map((part, index) => (
-                  <span key={index}>{part.text}</span>
-                ))}
+            <div className="mt-1 text-sm leading-6 text-zinc-800 dark:text-zinc-200">
+              {message.role === "user" ? (
+                // The person's own text is shown exactly as typed — running it
+                // through a markdown renderer would silently reformat it.
+                <p className="whitespace-pre-wrap">
+                  {message.parts
+                    .filter((part) => part.type === "text")
+                    .map((part) => part.text)
+                    .join("")}
+                </p>
+              ) : (
+                <Markdown>
+                  {message.parts
+                    .filter((part) => part.type === "text")
+                    .map((part) => part.text)
+                    .join("")}
+                </Markdown>
+              )}
             </div>
+
+            {message.role === "assistant" &&
+            message.metadata?.sources?.length ? (
+              <details className="mt-2">
+                <summary className="cursor-pointer font-mono text-xs uppercase tracking-wider text-zinc-400">
+                  Sources ({message.metadata.sources.length})
+                </summary>
+                <ul className="mt-1 space-y-1">
+                  {message.metadata.sources.map((source) => (
+                    <li key={source.documentId}>
+                      <Link
+                        href={`/b/${brandSlug}/knowledge/${source.documentId}`}
+                        className="text-xs text-zinc-600 underline underline-offset-2 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
+                      >
+                        {source.title}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </details>
+            ) : null}
           </div>
         ))}
 

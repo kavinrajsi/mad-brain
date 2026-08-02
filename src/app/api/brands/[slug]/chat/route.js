@@ -48,6 +48,15 @@ export async function POST(request, { params }) {
     ? await retrieveBrandContext({ brandId: access.brandId, query })
     : [];
 
+  // Chunks arrive ranked by score, so first-seen order is best-match order.
+  const seen = new Set();
+  const sources = [];
+  for (const chunk of chunks) {
+    if (seen.has(chunk.documentId)) continue;
+    seen.add(chunk.documentId);
+    sources.push({ documentId: chunk.documentId, title: chunk.documentTitle });
+  }
+
   const result = streamText({
     model: chatModel(resolveModelId(payload.modelId ?? "")),
     system: `${CHAT_SYSTEM}\n\nBrand: ${access.name}\n\nCONTEXT\n${
@@ -63,6 +72,10 @@ export async function POST(request, { params }) {
   });
 
   return result.toUIMessageStreamResponse({
+    // Emitted on stream start so the sources list renders before the answer
+    // finishes streaming.
+    messageMetadata: ({ part }) =>
+      part.type === "start" && sources.length ? { sources } : undefined,
     // The default masks every failure as "An error occurred", which leaves the
     // user staring at a dead chat box. Provider messages here are operational —
     // out of credits, model unavailable, context too long — and are what the
