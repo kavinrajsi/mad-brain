@@ -1,9 +1,9 @@
 import "server-only";
 
-import { RETRIEVAL } from "./config";
-import { embedQuery } from "./embed";
-import { queryBrandVectors } from "./pinecone";
-import { rankChunksByMatch } from "./rank";
+import { RETRIEVAL } from "./config.js";
+import { embedQuery } from "./embed.js";
+import { queryBrandVectors } from "./pinecone.js";
+import { rankChunksByMatch } from "./rank.js";
 import { getChunksByPineconeIds } from "@/lib/db/queries";
 
 /**

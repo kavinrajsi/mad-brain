@@ -7,9 +7,9 @@ import { embedChunks } from "@/lib/ai/embed";
 import { deleteBrandVectors, upsertBrandVectors } from "@/lib/ai/pinecone";
 import { db } from "@/lib/db/client";
 import { documentChunks, documents } from "@/lib/db/schema";
-import { chunkText } from "./chunk";
-import { extractText, htmlToText } from "./parse";
-import { fetchGuardedText } from "./url-guard";
+import { chunkText } from "./chunk.js";
+import { extractText, htmlToText } from "./parse.js";
+import { fetchGuardedText } from "./url-guard.js";
 
 const MAX_FETCH_BYTES = 25 * 1024 * 1024;
 
@@ -20,8 +20,8 @@ const MAX_FETCH_BYTES = 25 * 1024 * 1024;
  * durable workflow later without restructuring, should large brand books start
  * exceeding the function timeout.
  *
- * Re-ingesting an existing document deletes its old chunks and vectors first,
- * so a retry cannot leave two generations of the same content in the index.
+ * Re-ingesting an existing document replaces its chunks and vectors, so a retry
+ * cannot leave two generations of the same content in the index.
  */
 export async function ingestDocument(documentId) {
   const [doc] = await db

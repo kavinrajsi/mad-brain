@@ -7,9 +7,9 @@ import {
   buildFitCheckPrompt,
   reconcileCitations,
   verdictSchema,
-} from "./prompt";
-import { retrieveBrandContext } from "./retrieve";
-import { openrouterModel } from "./providers";
+} from "./prompt.js";
+import { retrieveBrandContext } from "./retrieve.js";
+import { openrouterModel } from "./providers.js";
 
 export async function runFitCheck({
   brandId,
@@ -30,6 +30,11 @@ export async function runFitCheck({
     system: FIT_CHECK_SYSTEM,
     prompt: buildFitCheckPrompt({ profile, brandName, chunks, idea }),
     output: Output.object({ schema: verdictSchema }),
+    // Without a cap the provider reserves the model's full output window —
+    // OpenRouter quoted 65536 tokens and refused the call on a low balance,
+    // for a verdict that runs to a couple of thousand. Generous enough that a
+    // reasoning model still has room to think.
+    maxOutputTokens: 16000,
   });
 
   const { citations, dropped } = reconcileCitations(output.citations, chunks);
