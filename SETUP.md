@@ -88,6 +88,7 @@ npm run dev
 | `npm run verify:pinecone` | Exercise the namespace boundary against the live index |
 | `npm run verify:openrouter` | Validate the model catalogue and run a real fit check (spends money) |
 | `npm run verify:e2e` | Two brands end to end: ingest, embed, retrieve, fit check, isolation (spends money) |
+| `npm run verify:access` | Session, roles and cross-brand refusals against a running dev server |
 | `npm run verify` | All four |
 | `npm run lint` | ESLint (`next build` no longer lints in Next 16) |
 
