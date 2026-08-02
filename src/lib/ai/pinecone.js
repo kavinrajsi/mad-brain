@@ -2,7 +2,7 @@ import "server-only";
 
 import { Pinecone } from "@pinecone-database/pinecone";
 
-import { EMBEDDING, PINECONE_INDEX, brandNamespace } from "./config";
+import { EMBEDDING, PINECONE_INDEX, brandNamespace } from "./config.js";
 
 let client;
 

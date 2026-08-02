@@ -16,7 +16,8 @@
     "verify:fitcheck": "node scripts/verify-fitcheck.mjs",
     "verify": "npm run verify:sql && npm run verify:ingest && npm run verify:fitcheck && npm run verify:embed && npm run verify:urlguard",
     "verify:embed": "node --conditions=react-server scripts/verify-embed.mjs",
-    "verify:urlguard": "node scripts/verify-url-guard.mjs"
+    "verify:urlguard": "node scripts/verify-url-guard.mjs",
+    "verify:pinecone": "node --conditions=react-server scripts/verify-pinecone.mjs"
   },
   "dependencies": {
     "@ai-sdk/openai": "^4.0.27",
