@@ -3,7 +3,7 @@ import { z } from "zod";
 
 import { resolveModelId } from "@/lib/ai/models";
 import { CHAT_SYSTEM, formatContext } from "@/lib/ai/prompt";
-import { openrouterModel } from "@/lib/ai/providers";
+import { chatModel } from "@/lib/ai/providers";
 import { retrieveBrandContext } from "@/lib/ai/retrieve";
 import { authorizeBrandApi } from "@/lib/auth/dal";
 
@@ -26,7 +26,10 @@ export async function POST(request, { params }) {
     return Response.json({ error: "invalid_payload" }, { status: 400 });
   }
 
-  const modelMessages = convertToModelMessages(payload.messages);
+  // Awaited: convertToModelMessages returns a Promise in AI SDK v7. Without the
+  // await this spreads a Promise and throws "modelMessages is not iterable" on
+  // every single chat turn.
+  const modelMessages = await convertToModelMessages(payload.messages);
 
   // Retrieve against the latest user turn.
   const lastUser = [...modelMessages]
@@ -46,14 +49,25 @@ export async function POST(request, { params }) {
     : [];
 
   const result = streamText({
-    model: openrouterModel(resolveModelId(payload.modelId ?? "")),
+    model: chatModel(resolveModelId(payload.modelId ?? "")),
     system: `${CHAT_SYSTEM}\n\nBrand: ${access.name}\n\nCONTEXT\n${
       chunks.length
         ? formatContext(chunks)
         : "(No indexed documents matched this question.)"
     }`,
     messages: modelMessages,
+    // Uncapped, the provider reserves the model's whole output window and
+    // refuses the call on a low balance — OpenRouter quoted 65536 tokens for
+    // an answer the system prompt asks to keep short.
+    maxOutputTokens: 4000,
   });
 
-  return result.toUIMessageStreamResponse();
+  return result.toUIMessageStreamResponse({
+    // The default masks every failure as "An error occurred", which leaves the
+    // user staring at a dead chat box. Provider messages here are operational —
+    // out of credits, model unavailable, context too long — and are what the
+    // person needs in order to act.
+    onError: (error) =>
+      String(error?.message ?? error) || "The model did not respond.",
+  });
 }

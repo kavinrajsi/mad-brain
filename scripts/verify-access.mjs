@@ -219,25 +219,34 @@ await check("a member of one brand cannot upload into another", async () => {
   return `${response.status}, no token issued`;
 });
 
-await check("the delete control is rendered for owners only", async () => {
-  // Rendering is not the boundary — deleteBrandAction re-authorises with
-  // minRole "owner" — but an admin being shown a button they cannot use is its
-  // own bug, and this is the cheapest way to catch the control being moved to
-  // a page guarded only at "admin".
-  await db
-    .insert(brandMembers)
-    .values({ brandId: brandA.id, userId: `uid-${TAG}-outsider`, role: "admin" });
+await check("deleting a brand is reachable by admins but not by members", async () => {
+  // The gate is admin, so an admin must see the control and a plain member
+  // must not. Rendering is not the boundary — deleteBrandAction re-authorises
+  // — but a member shown a button they cannot use is its own bug.
+  for (const [role, shouldSee] of [
+    ["admin", true],
+    ["member", false],
+  ]) {
+    await db
+      .insert(brandMembers)
+      .values({ brandId: brandA.id, userId: `uid-${TAG}-outsider`, role })
+      .onConflictDoUpdate({
+        target: [brandMembers.brandId, brandMembers.userId],
+        set: { role },
+      });
 
-  const asAdmin = await get(`/b/${brandA.slug}/settings/members`, outsider.raw);
-  const adminHtml = await asAdmin.text();
-  if (adminHtml.includes("Delete this brand")) {
-    throw new Error("an admin was shown the delete control");
-  }
+    const response = await get(
+      `/b/${brandA.slug}/settings/members`,
+      outsider.raw,
+    );
+    const html = response.status === 200 ? await response.text() : "";
+    const sees = html.includes("Delete this brand");
 
-  const asOwner = await get(`/b/${brandA.slug}/settings/members`, owner.raw);
-  const ownerHtml = await asOwner.text();
-  if (!ownerHtml.includes("Delete this brand")) {
-    throw new Error("an owner was not shown the delete control");
+    if (sees !== shouldSee) {
+      throw new Error(
+        `a ${role} ${sees ? "was shown" : "was not shown"} the delete control`,
+      );
+    }
   }
 
   await db
@@ -248,7 +257,41 @@ await check("the delete control is rendered for owners only", async () => {
         eq(brandMembers.userId, `uid-${TAG}-outsider`),
       ),
     );
-  return "hidden from admin, shown to owner";
+  return "shown to admin, hidden from member";
+});
+
+await check("a member can actually hold a chat turn", async () => {
+  // The chat route had never been exercised end to end. It was broken for
+  // every turn — convertToModelMessages returns a Promise in AI SDK v7, and
+  // spreading it threw "modelMessages is not iterable" before a single token
+  // was streamed. A 403 test does not reach that line.
+  const response = await fetch(`${BASE}/api/brands/${brandA.slug}/chat`, {
+    method: "POST",
+    headers: { cookie: owner.raw, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      modelId: "deepseek/deepseek-v3.2",
+      messages: [
+        {
+          id: "m1",
+          role: "user",
+          parts: [{ type: "text", text: "Say the single word: ready." }],
+        },
+      ],
+    }),
+  });
+
+  if (response.status !== 200) {
+    throw new Error(`chat returned ${response.status}: ${await response.text()}`);
+  }
+
+  const body = await response.text();
+  if (/"type"\s*:\s*"error"/.test(body)) {
+    throw new Error(`stream carried an error: ${body.slice(0, 200)}`);
+  }
+  if (!/"type"\s*:\s*"text-delta"/.test(body)) {
+    throw new Error(`no text was streamed: ${body.slice(0, 200)}`);
+  }
+  return `${body.length} bytes streamed`;
 });
 
 await check("signing out clears the cookie", async () => {

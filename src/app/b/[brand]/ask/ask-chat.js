@@ -65,7 +65,12 @@ export default function AskChat({ brandSlug, families, defaultModelId }) {
 
         {error ? (
           <p className="rounded-lg border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-300">
-            {error.message}
+            {/*
+              A route that throws before streaming returns a 500 with no body,
+              so error.message is an empty string — which rendered as an empty
+              red box that said nothing at all.
+            */}
+            {error.message || "The brand could not answer that. Please try again."}
           </p>
         ) : null}
       </div>

@@ -90,15 +90,17 @@ export async function revokeInviteAction(_prevState, formData) {
  * Deletes a brand outright: its vectors, then every row Postgres cascades from
  * the brand.
  *
- * Owner-only, and gated on typing the slug. An admin can add and remove people;
- * destroying the brand's entire knowledge base is a different order of action,
- * and it cannot be undone — the vectors can only be rebuilt by re-ingesting
+ * Admin and above, gated on typing the slug. Note the asymmetry this creates:
+ * an admin cannot demote or remove a single owner, but can delete the brand
+ * those owners sit on. That is a deliberate product decision, not an oversight
+ * — the typed-slug gate is the only thing standing between an admin and an
+ * unrecoverable loss, since the vectors can only be rebuilt by re-ingesting
  * every source document.
  */
 export async function deleteBrandAction(_prevState, formData) {
   const slug = String(formData.get("brandSlug") ?? "");
-  const access = await getBrandAccess(slug, "owner");
-  if (!access) return { error: "Only an owner can delete a brand." };
+  const access = await getBrandAccess(slug, "admin");
+  if (!access) return { error: "You do not have permission to delete this brand." };
 
   if (String(formData.get("confirm") ?? "").trim() !== slug) {
     return { error: `Type ${slug} exactly to confirm.` };

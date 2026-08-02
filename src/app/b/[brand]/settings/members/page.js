@@ -27,17 +27,13 @@ export default async function MembersPage({ params }) {
     listPendingInvites(access.brandId),
   ]);
 
-  // Only an owner sees the delete control, so the counts behind it are only
-  // worth fetching for an owner.
-  const counts =
-    access.role === "owner" ? await deletionCounts(access.brandId) : null;
-  const [brand] = counts
-    ? await db
-        .select({ name: brands.name })
-        .from(brands)
-        .where(eq(brands.id, access.brandId))
-        .limit(1)
-    : [];
+  // The page already requires admin, which is also the bar for deleting.
+  const counts = await deletionCounts(access.brandId);
+  const [brand] = await db
+    .select({ name: brands.name })
+    .from(brands)
+    .where(eq(brands.id, access.brandId))
+    .limit(1);
 
   const ids = members.map((m) => m.userId);
   const profiles = ids.length
@@ -114,21 +110,20 @@ export default async function MembersPage({ params }) {
         </ul>
       </section>
 
-      {counts ? (
-        <section className="mt-16 border-t border-zinc-200 pt-8 dark:border-zinc-800">
-          <h2 className="text-sm font-medium text-red-700 dark:text-red-400">
-            Danger zone
-          </h2>
-          <p className="mt-2 mb-4 text-sm leading-6 text-zinc-600 dark:text-zinc-400">
-            Only owners can delete a brand.
-          </p>
-          <DeleteBrand
-            brandSlug={slug}
-            brandName={brand?.name ?? slug}
-            counts={counts}
-          />
-        </section>
-      ) : null}
+      <section className="mt-16 border-t border-zinc-200 pt-8 dark:border-zinc-800">
+        <h2 className="text-sm font-medium text-red-700 dark:text-red-400">
+          Danger zone
+        </h2>
+        <p className="mt-2 mb-4 text-sm leading-6 text-zinc-600 dark:text-zinc-400">
+          Deleting a brand is permanent and affects everyone on it, owners
+          included.
+        </p>
+        <DeleteBrand
+          brandSlug={slug}
+          brandName={brand?.name ?? slug}
+          counts={counts}
+        />
+      </section>
     </main>
   );
 }

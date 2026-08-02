@@ -26,6 +26,7 @@
     "delete:brand": "node --conditions=react-server --import ./scripts/alias-hooks.mjs scripts/delete-brand.mjs"
   },
   "dependencies": {
+    "@ai-sdk/anthropic": "^4.0.27",
     "@ai-sdk/openai": "^4.0.27",
     "@ai-sdk/react": "^4.0.50",
     "@neondatabase/serverless": "^1.1.0",

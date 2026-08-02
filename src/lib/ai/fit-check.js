@@ -10,7 +10,7 @@ import {
   verdictSchema,
 } from "./prompt.js";
 import { retrieveBrandContext } from "./retrieve.js";
-import { openrouterModel } from "./providers.js";
+import { chatModel } from "./providers.js";
 
 export async function runFitCheck({
   brandId,
@@ -30,7 +30,7 @@ export async function runFitCheck({
 
   const call = () =>
     generateText({
-      model: model ?? openrouterModel(modelId),
+      model: model ?? chatModel(modelId),
       system: FIT_CHECK_SYSTEM,
       prompt,
       output: Output.object({ schema: verdictSchema }),
