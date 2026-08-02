@@ -19,6 +19,7 @@ import {
   formatContext,
   reconcileCitations,
   renderRubric,
+  verdictForScore,
   verdictSchema,
 } from "../src/lib/ai/prompt.js";
 
@@ -200,6 +201,22 @@ await check("no citations at all is handled", () => {
   const { citations, dropped } = reconcileCitations(undefined, CHUNKS);
   if (citations.length !== 0 || dropped !== 0) throw new Error("undefined not handled");
   return "0 and 0";
+});
+
+await check("the verdict label is a function of the score", () => {
+  const bands = [
+    [100, "strong-fit"], [70, "strong-fit"],
+    [69, "partial-fit"], [40, "partial-fit"],
+    [39, "off-brand"], [0, "off-brand"],
+  ];
+  const wrong = bands.filter(([score, want]) => verdictForScore(score) !== want);
+  if (wrong.length) {
+    throw new Error(wrong.map(([s, w]) => `${s} should be ${w}`).join(", "));
+  }
+  // The bug this guards: a live model returned score 0 with "strong-fit",
+  // which renders as a green badge beside a zero.
+  if (verdictForScore(0) === "strong-fit") throw new Error("0 is not a strong fit");
+  return "6 boundaries";
 });
 
 console.log(results.join("\n"));

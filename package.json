@@ -18,7 +18,8 @@
     "verify:embed": "node --conditions=react-server scripts/verify-embed.mjs",
     "verify:urlguard": "node scripts/verify-url-guard.mjs",
     "verify:pinecone": "node --conditions=react-server --import ./scripts/alias-hooks.mjs scripts/verify-pinecone.mjs",
-    "verify:openrouter": "node --conditions=react-server --import ./scripts/alias-hooks.mjs scripts/verify-openrouter.mjs"
+    "verify:openrouter": "node --conditions=react-server --import ./scripts/alias-hooks.mjs scripts/verify-openrouter.mjs",
+    "verify:e2e": "node --conditions=react-server --import ./scripts/alias-hooks.mjs scripts/verify-e2e.mjs"
   },
   "dependencies": {
     "@ai-sdk/openai": "^4.0.27",

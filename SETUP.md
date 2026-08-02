@@ -85,6 +85,9 @@ npm run dev
 | `npm run verify:fitcheck` | Exercise the fit-check pipeline against a mock model (no API key) |
 | `npm run verify:embed` | Exercise embedding batch ordering and retrieval ranking (no API key) |
 | `npm run verify:urlguard` | Exercise the SSRF and blob-ownership guards (no network) |
+| `npm run verify:pinecone` | Exercise the namespace boundary against the live index |
+| `npm run verify:openrouter` | Validate the model catalogue and run a real fit check (spends money) |
+| `npm run verify:e2e` | Two brands end to end: ingest, embed, retrieve, fit check, isolation (spends money) |
 | `npm run verify` | All four |
 | `npm run lint` | ESLint (`next build` no longer lints in Next 16) |
 

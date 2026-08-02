@@ -51,7 +51,23 @@ Rules:
   the context is relevant, return an empty citations array rather than inventing
   one.
 - Score every pillar in the rubric, even if the evidence is thin — say so in the
-  reasoning when it is.`;
+  reasoning when it is.
+- The overall score bands are: 70-100 strong fit, 40-69 partial fit, 0-39
+  off-brand. Make the score and the reasoning agree.`;
+
+/**
+ * The verdict label is derived from the score rather than taken from the model.
+ *
+ * Asked for both, models will contradict themselves: a live run returned
+ * overallScore 0 alongside verdict "strong-fit", which renders as a green
+ * badge beside a zero. The label is a pure function of the score, so it is
+ * computed as one.
+ */
+export function verdictForScore(score) {
+  if (score >= 70) return "strong-fit";
+  if (score >= 40) return "partial-fit";
+  return "off-brand";
+}
 
 export const CHAT_SYSTEM = `You answer questions about one brand, for someone who is new to it.
 
