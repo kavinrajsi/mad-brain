@@ -15,13 +15,7 @@ import { config } from "dotenv";
 
 config({ path: new URL("../.env.local", import.meta.url).pathname });
 
-const { randomBytes } = await import("node:crypto");
-const { and, eq } = await import("drizzle-orm");
-const { db } = await import("../src/lib/db/client.js");
-const { brandProfiles, brands, documents, invites } = await import(
-  "../src/lib/db/schema.js"
-);
-const { ingestDocument } = await import("../src/lib/ingest/pipeline.js");
+const { seedBrand } = await import("./lib/seed-brand.mjs");
 
 const OWNER_EMAIL = process.argv[2] ?? "sikavinraj@gmail.com";
 const SLUG = "madarth";
@@ -93,7 +87,6 @@ const PROFILE = {
 const DOCUMENTS = [
   {
     title: "Madarth Brand Knowledge",
-    pinnedOrder: 1,
     body: `THE CORE
 
 Madarth® was founded in 2005. Based in Mylapore, Chennai, in a 110-year-old building with a mango tree older than the building itself. 20 years in branding, advertising, and digital transformation. The mango tree is not decoration — it is the brand metaphor. Deep roots. Sharp edge.
@@ -192,7 +185,6 @@ WHAT IS NEVER MADARTH
   },
   {
     title: "Visual System",
-    pinnedOrder: 2,
     body: `COLOURS
 
 - Mango Gold #F5B800 — brand hero, master signal
@@ -235,7 +227,6 @@ VISUAL NEVER-DOS
   },
   {
     title: "Division — Madarth Core",
-    pinnedOrder: 3,
     body: `MADARTH CORE
 
 Colour: Mango Gold #F5B800. Background Charcoal #1C1C1A.
@@ -248,7 +239,6 @@ Tone runs the full Madarth register — wit and warmth, confident and earned. Co
   },
   {
     title: "Division — Search Madarth",
-    pinnedOrder: 4,
     body: `SEARCH MADARTH
 
 Colour: Leaf Green #2E7D32. Background #1A261B.
@@ -261,7 +251,6 @@ Copy here is closer to the ground and more immediate than Core, but the prohibit
   },
   {
     title: "Division — Agile Madarth",
-    pinnedOrder: 5,
     body: `AGILE MADARTH
 
 Colour: Mango Skin #E8621A. Background #261A15.
@@ -274,7 +263,6 @@ Restraint is the register: shorter sentences, concrete claims, no ornament for i
   },
   {
     title: "Division — Roots Madarth",
-    pinnedOrder: 6,
     body: `ROOTS MADARTH
 
 Colour: Trunk Brown #6D4C41, with Green #33691E. Background #1E1715.
@@ -287,7 +275,6 @@ Tone is the warmest and least hurried of the four. Reverence is genuine here, no
   },
   {
     title: "The Three Tests — Quick Reference",
-    pinnedOrder: 7,
     body: `THE THREE TESTS
 
 Origin — Is this rooted in a real human truth? Not a brand claim. Something a person would say about their own life without the product in the room.
@@ -311,88 +298,12 @@ Never: agency-speak, generic pan-Indian, tokenistic Tamil.`,
   },
 ];
 
-async function main() {
-  let [brand] = await db.select().from(brands).where(eq(brands.slug, SLUG));
+await seedBrand({
+  slug: SLUG,
+  name: "Madarth",
+  profile: PROFILE,
+  documents: DOCUMENTS,
+  ownerEmail: OWNER_EMAIL,
+});
 
-  if (!brand) {
-    [brand] = await db
-      .insert(brands)
-      .values({ slug: SLUG, name: "Madarth" })
-      .returning();
-    console.log(`Created brand ${SLUG}.`);
-  } else {
-    console.log(`Brand ${SLUG} already exists — refreshing.`);
-  }
-
-  await db
-    .insert(brandProfiles)
-    .values({ brandId: brand.id, ...PROFILE })
-    .onConflictDoUpdate({
-      target: brandProfiles.brandId,
-      set: { ...PROFILE, updatedAt: new Date() },
-    });
-  console.log("Profile written.");
-
-  for (const spec of DOCUMENTS) {
-    const [existing] = await db
-      .select({ id: documents.id })
-      .from(documents)
-      .where(and(eq(documents.brandId, brand.id), eq(documents.title, spec.title)))
-      .limit(1);
-
-    let id = existing?.id;
-    if (id) {
-      await db
-        .update(documents)
-        .set({ body: spec.body, pinnedOrder: spec.pinnedOrder, status: "pending" })
-        .where(eq(documents.id, id));
-    } else {
-      const [row] = await db
-        .insert(documents)
-        .values({
-          brandId: brand.id,
-          title: spec.title,
-          sourceType: "note",
-          body: spec.body,
-          pinnedOrder: spec.pinnedOrder,
-          status: "pending",
-        })
-        .returning({ id: documents.id });
-      id = row.id;
-    }
-
-    const { chunks } = await ingestDocument(id);
-    console.log(`  ${spec.title} — ${chunks} chunks`);
-  }
-
-  // An invite rather than a membership row: the owner has no Firebase account
-  // yet, and invites are consumed by email on first sign-in.
-  const [already] = await db
-    .select({ id: invites.id })
-    .from(invites)
-    .where(
-      and(
-        eq(invites.brandId, brand.id),
-        eq(invites.email, OWNER_EMAIL.toLowerCase()),
-      ),
-    )
-    .limit(1);
-
-  if (already) {
-    console.log(`Owner invite for ${OWNER_EMAIL} already exists.`);
-  } else {
-    await db.insert(invites).values({
-      brandId: brand.id,
-      email: OWNER_EMAIL.toLowerCase(),
-      role: "owner",
-      token: randomBytes(32).toString("base64url"),
-      expiresAt: new Date(Date.now() + 365 * 86400_000),
-    });
-    console.log(`Owner invite created for ${OWNER_EMAIL}.`);
-  }
-
-  console.log(`\nDone. Sign in as ${OWNER_EMAIL}, then open /b/${SLUG}`);
-}
-
-await main();
 process.exit(0);
