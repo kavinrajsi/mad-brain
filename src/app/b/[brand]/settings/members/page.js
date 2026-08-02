@@ -1,10 +1,17 @@
-import { eq, inArray } from "drizzle-orm";
+import { count, eq, inArray } from "drizzle-orm";
 
+import DeleteBrand from "./delete-brand";
 import InviteForm from "./invite-form";
 import MemberRow from "./member-row";
 import { requireBrandRole } from "@/lib/auth/dal";
 import { db } from "@/lib/db/client";
-import { users } from "@/lib/db/schema";
+import {
+  brands,
+  documentChunks,
+  documents,
+  ideaChecks,
+  users,
+} from "@/lib/db/schema";
 import { listBrandMembers, listPendingInvites } from "@/lib/db/queries";
 
 export const metadata = {
@@ -19,6 +26,18 @@ export default async function MembersPage({ params }) {
     listBrandMembers(access.brandId),
     listPendingInvites(access.brandId),
   ]);
+
+  // Only an owner sees the delete control, so the counts behind it are only
+  // worth fetching for an owner.
+  const counts =
+    access.role === "owner" ? await deletionCounts(access.brandId) : null;
+  const [brand] = counts
+    ? await db
+        .select({ name: brands.name })
+        .from(brands)
+        .where(eq(brands.id, access.brandId))
+        .limit(1)
+    : [];
 
   const ids = members.map((m) => m.userId);
   const profiles = ids.length
@@ -94,6 +113,48 @@ export default async function MembersPage({ params }) {
           ))}
         </ul>
       </section>
+
+      {counts ? (
+        <section className="mt-16 border-t border-zinc-200 pt-8 dark:border-zinc-800">
+          <h2 className="text-sm font-medium text-red-700 dark:text-red-400">
+            Danger zone
+          </h2>
+          <p className="mt-2 mb-4 text-sm leading-6 text-zinc-600 dark:text-zinc-400">
+            Only owners can delete a brand.
+          </p>
+          <DeleteBrand
+            brandSlug={slug}
+            brandName={brand?.name ?? slug}
+            counts={counts}
+          />
+        </section>
+      ) : null}
     </main>
   );
+}
+
+/** Counted so the confirmation states what is actually about to be destroyed. */
+async function deletionCounts(brandId) {
+  const [[docs], [chunks], [checks], members] = await Promise.all([
+    db
+      .select({ n: count() })
+      .from(documents)
+      .where(eq(documents.brandId, brandId)),
+    db
+      .select({ n: count() })
+      .from(documentChunks)
+      .where(eq(documentChunks.brandId, brandId)),
+    db
+      .select({ n: count() })
+      .from(ideaChecks)
+      .where(eq(ideaChecks.brandId, brandId)),
+    listBrandMembers(brandId),
+  ]);
+
+  return {
+    documents: docs.n,
+    chunks: chunks.n,
+    checks: checks.n,
+    members: members.length,
+  };
 }

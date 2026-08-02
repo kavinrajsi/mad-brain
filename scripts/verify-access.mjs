@@ -20,7 +20,7 @@ import { config } from "dotenv";
 
 config({ path: new URL("../.env.local", import.meta.url).pathname });
 
-const { eq } = await import("drizzle-orm");
+const { and, eq } = await import("drizzle-orm");
 const { db } = await import("../src/lib/db/client.js");
 const { brandMembers, brands, users } = await import("../src/lib/db/schema.js");
 const { adminAuth } = await import("../src/lib/auth/firebase-admin.js");
@@ -217,6 +217,38 @@ await check("a member of one brand cannot upload into another", async () => {
     if (body.includes("clientToken")) throw new Error("LEAK: an upload token was issued");
   }
   return `${response.status}, no token issued`;
+});
+
+await check("the delete control is rendered for owners only", async () => {
+  // Rendering is not the boundary — deleteBrandAction re-authorises with
+  // minRole "owner" — but an admin being shown a button they cannot use is its
+  // own bug, and this is the cheapest way to catch the control being moved to
+  // a page guarded only at "admin".
+  await db
+    .insert(brandMembers)
+    .values({ brandId: brandA.id, userId: `uid-${TAG}-outsider`, role: "admin" });
+
+  const asAdmin = await get(`/b/${brandA.slug}/settings/members`, outsider.raw);
+  const adminHtml = await asAdmin.text();
+  if (adminHtml.includes("Delete this brand")) {
+    throw new Error("an admin was shown the delete control");
+  }
+
+  const asOwner = await get(`/b/${brandA.slug}/settings/members`, owner.raw);
+  const ownerHtml = await asOwner.text();
+  if (!ownerHtml.includes("Delete this brand")) {
+    throw new Error("an owner was not shown the delete control");
+  }
+
+  await db
+    .delete(brandMembers)
+    .where(
+      and(
+        eq(brandMembers.brandId, brandA.id),
+        eq(brandMembers.userId, `uid-${TAG}-outsider`),
+      ),
+    );
+  return "hidden from admin, shown to owner";
 });
 
 await check("signing out clears the cookie", async () => {

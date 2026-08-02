@@ -69,6 +69,24 @@ export async function queryBrandVectors({ brandId, vector, topK }) {
   return result.matches ?? [];
 }
 
+/**
+ * Drops a whole brand's namespace, for brand deletion.
+ *
+ * A brand with no indexed documents has no namespace at all, and Pinecone
+ * answers 404 rather than treating the delete as a no-op — so an empty brand
+ * would otherwise be undeletable.
+ */
+export async function deleteBrandNamespace(brandId) {
+  try {
+    await brandIndex().namespace(brandNamespace(brandId)).deleteAll();
+  } catch (error) {
+    const status = error?.status ?? error?.cause?.status;
+    const message = String(error?.message ?? error);
+    if (status === 404 || /404|not found/i.test(message)) return;
+    throw error;
+  }
+}
+
 /** Used when a document is deleted or re-ingested. */
 export async function deleteBrandVectors({ brandId, ids }) {
   if (!ids.length) return;

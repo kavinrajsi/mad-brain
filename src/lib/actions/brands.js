@@ -6,10 +6,11 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
+import { deleteBrandNamespace } from "@/lib/ai/pinecone";
 import { getBrandAccess, requireUser } from "@/lib/auth/dal";
 import { db } from "@/lib/db/client";
 import { createBrand } from "@/lib/db/queries";
-import { brandMembers, invites } from "@/lib/db/schema";
+import { brandMembers, brands, invites } from "@/lib/db/schema";
 
 const INVITE_TTL_DAYS = 14;
 
@@ -83,6 +84,33 @@ export async function revokeInviteAction(_prevState, formData) {
 
   revalidatePath(`/b/${slug}/settings/members`);
   return { ok: true };
+}
+
+/**
+ * Deletes a brand outright: its vectors, then every row Postgres cascades from
+ * the brand.
+ *
+ * Owner-only, and gated on typing the slug. An admin can add and remove people;
+ * destroying the brand's entire knowledge base is a different order of action,
+ * and it cannot be undone — the vectors can only be rebuilt by re-ingesting
+ * every source document.
+ */
+export async function deleteBrandAction(_prevState, formData) {
+  const slug = String(formData.get("brandSlug") ?? "");
+  const access = await getBrandAccess(slug, "owner");
+  if (!access) return { error: "Only an owner can delete a brand." };
+
+  if (String(formData.get("confirm") ?? "").trim() !== slug) {
+    return { error: `Type ${slug} exactly to confirm.` };
+  }
+
+  // Pinecone first. The namespace is named after the brand id, so deleting the
+  // row first would strand vectors that nothing can name, find or remove.
+  await deleteBrandNamespace(access.brandId);
+  await db.delete(brands).where(eq(brands.id, access.brandId));
+
+  revalidatePath("/");
+  redirect("/");
 }
 
 /** Current role of another member, plus how many owners the brand has left. */
