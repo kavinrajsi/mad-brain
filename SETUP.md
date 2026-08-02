@@ -11,12 +11,17 @@ scored, cited verdict.
 |---|---|---|
 | Neon Postgres | brands, members, invites, documents, chunks, checks | done — `DATABASE_URL` pulled, migrations applied |
 | Vercel Blob (`madbrain-docs`, private) | uploaded brand books and decks | done — `BLOB_READ_WRITE_TOKEN` pulled |
+| Pinecone (`madbrain-brands`) | one namespace per brand, 1536d cosine | done — index live, isolation verified |
+| Firebase (`madarth-brain`) | sign-in and session cookies | done — Google enabled, Admin SDK verified |
+| OpenRouter | fit check and chat models | done — all 15 catalogue models validated |
+| OpenAI | embeddings only | done — 1536d confirmed against the index |
 
 The Vercel project is linked as `madarth/madbrain`.
 
-## Still needed
+## Getting the keys into Vercel
 
-Add each of these, then re-run `vercel env pull`:
+`.env.local` holds them for local development. For deployment they must also be
+added to the Vercel project — `vercel env pull` reads, it does not write:
 
 ```bash
 vercel env add PINECONE_API_KEY development
@@ -89,7 +94,7 @@ npm run dev
 | `npm run verify:openrouter` | Validate the model catalogue and run a real fit check (spends money) |
 | `npm run verify:e2e` | Two brands end to end: ingest, embed, retrieve, fit check, isolation (spends money) |
 | `npm run verify:access` | Session, roles and cross-brand refusals against a running dev server |
-| `npm run verify` | All four |
+| `npm run verify` | The five suites that need no live model |
 | `npm run lint` | ESLint (`next build` no longer lints in Next 16) |
 
 `verify:sql` is worth running after any change to `src/lib/db/queries.js`. This
