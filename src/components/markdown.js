@@ -130,7 +130,9 @@ function CitationChip({ href, citationsByIndex, brandSlug, children, ...props })
                   aria-label="Previous source"
                   className="rounded p-1 text-zinc-400 hover:bg-zinc-100 disabled:opacity-30 dark:hover:bg-zinc-900"
                 >
-                  ◀
+                  <svg viewBox="0 0 24 24" className="h-4 w-4" fill="currentColor">
+                    <path d="M15.41 7.41 14 6l-6 6 6 6 1.41-1.41L10.83 12z" />
+                  </svg>
                 </button>
                 <span className="font-mono text-[10px] text-zinc-400">
                   {page + 1}/{group.length}
@@ -142,7 +144,9 @@ function CitationChip({ href, citationsByIndex, brandSlug, children, ...props })
                   aria-label="Next source"
                   className="rounded p-1 text-zinc-400 hover:bg-zinc-100 disabled:opacity-30 dark:hover:bg-zinc-900"
                 >
-                  ▶
+                  <svg viewBox="0 0 24 24" className="h-4 w-4" fill="currentColor">
+                    <path d="M8.59 16.59 10 18l6-6-6-6-1.41 1.41L13.17 12z" />
+                  </svg>
                 </button>
               </span>
             ) : null}
