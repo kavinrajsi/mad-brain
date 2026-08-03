@@ -22,6 +22,9 @@
     "verify:e2e": "node --conditions=react-server --import ./scripts/alias-hooks.mjs scripts/verify-e2e.mjs",
     "verify:access": "node --conditions=react-server --import ./scripts/alias-hooks.mjs scripts/verify-access.mjs",
     "seed:madarth": "node --conditions=react-server --import ./scripts/alias-hooks.mjs scripts/seed-madarth.mjs",
+    "seed:search-madarth": "node --conditions=react-server --import ./scripts/alias-hooks.mjs scripts/seed-search-madarth.mjs",
+    "seed:agile-madarth": "node --conditions=react-server --import ./scripts/alias-hooks.mjs scripts/seed-agile-madarth.mjs",
+    "seed:roots-madarth": "node --conditions=react-server --import ./scripts/alias-hooks.mjs scripts/seed-roots-madarth.mjs",
     "seed:nithya": "node --conditions=react-server --import ./scripts/alias-hooks.mjs scripts/seed-nithya-amirtham.mjs",
     "delete:brand": "node --conditions=react-server --import ./scripts/alias-hooks.mjs scripts/delete-brand.mjs"
   },

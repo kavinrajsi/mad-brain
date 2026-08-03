@@ -88,9 +88,11 @@ export default function VerdictCard({ result, modelId }) {
           </p>
         ) : (
           <ul className="mt-3 space-y-3">
-            {result.citations.map((citation) => (
+            {result.citations.map((citation, index) => (
               <li
-                key={citation.chunkId}
+                // chunkId alone isn't unique — the model can cite the same
+                // chunk twice with different quotes.
+                key={`${citation.chunkId}-${index}`}
                 className="rounded-lg border border-zinc-200 px-4 py-3 dark:border-zinc-800"
               >
                 <p className="text-xs text-zinc-500">
@@ -127,9 +129,9 @@ function Bullets({ title, items }) {
         {title}
       </h2>
       <ul className="mt-2 space-y-1.5">
-        {items.map((item) => (
+        {items.map((item, index) => (
           <li
-            key={item}
+            key={`${item}-${index}`}
             className="flex gap-2 text-sm leading-6 text-zinc-600 dark:text-zinc-400"
           >
             <span className="text-zinc-300 dark:text-zinc-700">—</span>
