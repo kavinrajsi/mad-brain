@@ -17,6 +17,7 @@ export const MODELS = [
     label: "Claude Opus 5",
     family: "Anthropic",
     context: 1000000,
+    vision: true,
     note: "Strongest reasoning — best default for nuanced brand judgement.",
   },
   {
@@ -24,6 +25,7 @@ export const MODELS = [
     label: "Claude Sonnet 5",
     family: "Anthropic",
     context: 1000000,
+    vision: true,
     note: "Faster and cheaper than Opus, still strong on nuance.",
   },
   // Id is Anthropic's dated model name, not OpenRouter's "claude-haiku-4.5"
@@ -37,6 +39,7 @@ export const MODELS = [
     label: "Claude Haiku 4.5",
     family: "Anthropic",
     context: 200000,
+    vision: true,
     note: "Fastest and cheapest Claude — good for high-volume checks.",
   },
   {
@@ -44,6 +47,7 @@ export const MODELS = [
     label: "Claude Fable 5",
     family: "Anthropic",
     context: 1000000,
+    vision: true,
   },
   // OpenAI
   {
@@ -51,12 +55,14 @@ export const MODELS = [
     label: "GPT-5.6 Terra",
     family: "OpenAI",
     context: 1050000,
+    vision: true,
   },
   {
     id: "openai/gpt-5.5",
     label: "GPT-5.5",
     family: "OpenAI",
     context: 1050000,
+    vision: true,
   },
   // Google
   {
@@ -64,6 +70,7 @@ export const MODELS = [
     label: "Gemini 3.6 Flash",
     family: "Google",
     context: 1048576,
+    vision: true,
     note: "Cheap and fast — good for high-volume checks.",
   },
   {
@@ -71,6 +78,7 @@ export const MODELS = [
     label: "Gemini 3.5 Flash",
     family: "Google",
     context: 1048576,
+    vision: true,
   },
   // DeepSeek
   {
@@ -91,6 +99,7 @@ export const MODELS = [
     label: "Grok 4.5",
     family: "xAI",
     context: 500000,
+    vision: true,
   },
   // Moonshot / Kimi
   {
@@ -98,6 +107,7 @@ export const MODELS = [
     label: "Kimi K3",
     family: "Moonshot",
     context: 1048576,
+    vision: true,
   },
   // Qwen
   {
@@ -111,6 +121,7 @@ export const MODELS = [
     label: "Qwen 3.6 Flash",
     family: "Qwen",
     context: 1000000,
+    vision: true,
   },
   // MiniMax
   {
@@ -118,6 +129,7 @@ export const MODELS = [
     label: "MiniMax M3",
     family: "MiniMax",
     context: 1048576,
+    vision: true,
   },
   // Meta
   {
@@ -125,6 +137,7 @@ export const MODELS = [
     label: "Llama 4 Maverick",
     family: "Meta",
     context: 1048576,
+    vision: true,
   },
   {
     id: "meta-llama/llama-3.3-70b-instruct",

@@ -8,6 +8,7 @@ import { retrieveBrandContext } from "@/lib/ai/retrieve";
 import { summarizeUsage } from "@/lib/ai/usage";
 import { authorizeBrandApi } from "@/lib/auth/dal";
 import { saveChat } from "@/lib/db/queries";
+import { assertBrandBlobUrl } from "@/lib/ingest/url-guard";
 
 export const maxDuration = 120;
 
@@ -16,6 +17,37 @@ const schema = z.object({
   modelId: z.string().optional(),
   chatId: z.string().uuid(),
 });
+
+/**
+ * Images attach as private Blob URLs (same access model as every other brand
+ * upload) — not fetchable by the model provider without a store token. Only
+ * the model-facing copy of the messages gets the swap: originalMessages
+ * (used for persistence) keeps the real blob URL, so History's transcript
+ * viewer can re-request it through /api/brands/[slug]/chat/image later
+ * instead of the message row growing a multi-MB base64 string forever.
+ */
+async function inlineImages(messages) {
+  const { get } = await import("@vercel/blob");
+  return Promise.all(
+    messages.map(async (message) => ({
+      ...message,
+      parts: await Promise.all(
+        (message.parts ?? []).map(async (part) => {
+          if (part.type !== "file" || !part.mediaType?.startsWith("image/")) {
+            return part;
+          }
+          const blob = await get(part.url, { access: "private" });
+          if (!blob?.stream) return part;
+          const buffer = Buffer.from(await new Response(blob.stream).arrayBuffer());
+          return {
+            ...part,
+            url: `data:${part.mediaType};base64,${buffer.toString("base64")}`,
+          };
+        }),
+      ),
+    })),
+  );
+}
 
 export async function POST(request, { params }) {
   const { slug } = await params;
@@ -29,10 +61,25 @@ export async function POST(request, { params }) {
     return Response.json({ error: "invalid_payload" }, { status: 400 });
   }
 
+  // A client-supplied image URL is untrusted input, same as blobUrl on the
+  // documents route — reject anything that isn't this brand's own blob
+  // before it ever reaches convertToModelMessages/the model provider.
+  try {
+    for (const message of payload.messages) {
+      for (const part of message.parts ?? []) {
+        if (part.type === "file") assertBrandBlobUrl(part.url, slug);
+      }
+    }
+  } catch (error) {
+    return Response.json({ error: String(error?.message ?? error) }, { status: 400 });
+  }
+
   // Awaited: convertToModelMessages returns a Promise in AI SDK v7. Without the
   // await this spreads a Promise and throws "modelMessages is not iterable" on
   // every single chat turn.
-  const modelMessages = await convertToModelMessages(payload.messages);
+  const modelMessages = await convertToModelMessages(
+    await inlineImages(payload.messages),
+  );
 
   // Retrieve against the latest user turn.
   const lastUser = [...modelMessages]

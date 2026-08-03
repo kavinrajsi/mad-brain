@@ -22,7 +22,25 @@ export async function POST(request) {
       body,
       request,
       onBeforeGenerateToken: async (pathname, clientPayload) => {
-        const { brandSlug } = JSON.parse(clientPayload ?? "{}");
+        const { brandSlug, kind = "document" } = JSON.parse(clientPayload ?? "{}");
+
+        if (kind === "chat-image") {
+          // Chat attachments are member-level (matches the chat route's own
+          // min-role) — not admin-only like brand-book uploads.
+          const access = await getBrandAccess(brandSlug, "member");
+          if (!access) {
+            throw new Error("You do not have permission to upload to this brand.");
+          }
+          if (!pathname.startsWith(`${brandBlobPrefix(brandSlug)}chat/`)) {
+            throw new Error("Upload path does not match this brand.");
+          }
+          return {
+            allowedContentTypes: ["image/png", "image/jpeg", "image/webp", "image/gif"],
+            maximumSizeInBytes: 10 * 1024 * 1024,
+            addRandomSuffix: true,
+            tokenPayload: JSON.stringify({ brandId: access.brandId }),
+          };
+        }
 
         // Re-checked here because the client chose the brand — a valid session
         // for brand A must not mint an upload token for brand B.

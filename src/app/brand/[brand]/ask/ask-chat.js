@@ -1,6 +1,7 @@
 "use client";
 
 import { useChat } from "@ai-sdk/react";
+import { upload } from "@vercel/blob/client";
 import { DefaultChatTransport } from "ai";
 
 import { useEffect, useRef, useState } from "react";
@@ -14,8 +15,9 @@ const STARTERS = [
 ];
 
 const MAX_TEXTAREA_HEIGHT = 200;
+const MAX_IMAGES = 4;
 
-function ModelPicker({ families, modelId, onChange }) {
+function ModelPicker({ families, modelId, onChange, requireVision }) {
   const [open, setOpen] = useState(false);
   const current = families
     .flatMap((group) => group.models)
@@ -52,23 +54,34 @@ function ModelPicker({ families, modelId, onChange }) {
                 <p className="px-2 py-1 font-mono text-[10px] uppercase tracking-wider text-zinc-400">
                   {group.family}
                 </p>
-                {group.models.map((model) => (
-                  <button
-                    key={model.id}
-                    type="button"
-                    onClick={() => {
-                      onChange(model.id);
-                      setOpen(false);
-                    }}
-                    className={`block w-full rounded-lg px-2 py-1.5 text-left text-sm transition hover:bg-zinc-100 dark:hover:bg-zinc-900 ${
-                      model.id === modelId
-                        ? "text-zinc-950 dark:text-zinc-50"
-                        : "text-zinc-600 dark:text-zinc-400"
-                    }`}
-                  >
-                    {model.label}
-                  </button>
-                ))}
+                {group.models.map((model) => {
+                  const disabled = requireVision && !model.vision;
+                  return (
+                    <button
+                      key={model.id}
+                      type="button"
+                      disabled={disabled}
+                      title={disabled ? "Does not support image input" : undefined}
+                      onClick={() => {
+                        onChange(model.id);
+                        setOpen(false);
+                      }}
+                      className={`block w-full rounded-lg px-2 py-1.5 text-left text-sm transition ${
+                        disabled
+                          ? "cursor-not-allowed text-zinc-300 dark:text-zinc-700"
+                          : "hover:bg-zinc-100 dark:hover:bg-zinc-900"
+                      } ${
+                        model.id === modelId && !disabled
+                          ? "text-zinc-950 dark:text-zinc-50"
+                          : disabled
+                            ? ""
+                            : "text-zinc-600 dark:text-zinc-400"
+                      }`}
+                    >
+                      {model.label}
+                    </button>
+                  );
+                })}
               </div>
             ))}
           </div>
@@ -97,13 +110,53 @@ function TypingIndicator() {
   );
 }
 
+function AttachmentStrip({ attachments, onRemove }) {
+  if (!attachments.length) return null;
+  return (
+    <div className="flex flex-wrap gap-2 px-1">
+      {attachments.map((a) => (
+        <div key={a.id} className="relative">
+          {/* eslint-disable-next-line @next/next/no-img-element -- local object URL preview, not an optimizable asset */}
+          <img
+            src={a.previewUrl}
+            alt={a.file.name}
+            className={`h-16 w-16 rounded-xl object-cover ${a.status === "uploading" ? "opacity-50" : ""}`}
+          />
+          {a.status === "uploading" ? (
+            <div className="absolute inset-0 flex items-center justify-center">
+              <span className="h-4 w-4 animate-spin rounded-full border-2 border-zinc-400 border-t-transparent" />
+            </div>
+          ) : null}
+          <button
+            type="button"
+            onClick={() => onRemove(a.id)}
+            aria-label="Remove image"
+            className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-zinc-950 text-white shadow dark:bg-zinc-50 dark:text-zinc-950"
+          >
+            <svg viewBox="0 0 16 16" className="h-3 w-3">
+              <path
+                d="M4 4l8 8M12 4l-8 8"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+              />
+            </svg>
+          </button>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function AskChat({ brandSlug, families, defaultModelId }) {
   const [modelId, setModelId] = useState(defaultModelId);
   const [input, setInput] = useState("");
+  const [attachments, setAttachments] = useState([]);
   // One id per mounted conversation; the server records history under it.
   const [chatId] = useState(() => crypto.randomUUID());
   const textareaRef = useRef(null);
   const bottomRef = useRef(null);
+  const fileInputRef = useRef(null);
 
   const { messages, sendMessage, status, error, stop } = useChat({
     transport: new DefaultChatTransport({
@@ -113,6 +166,13 @@ export default function AskChat({ brandSlug, families, defaultModelId }) {
   });
 
   const busy = status === "submitted" || status === "streaming";
+  const currentModel = families
+    .flatMap((group) => group.models)
+    .find((model) => model.id === modelId);
+  const hasImages = attachments.length > 0;
+  const needsVisionSwitch = hasImages && !currentModel?.vision;
+  const uploading = attachments.some((a) => a.status === "uploading");
+  const readyImages = attachments.filter((a) => a.status === "done");
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -125,13 +185,80 @@ export default function AskChat({ brandSlug, families, defaultModelId }) {
     el.style.height = `${Math.min(el.scrollHeight, MAX_TEXTAREA_HEIGHT)}px`;
   }
 
+  async function handleFilesSelected(fileList) {
+    const files = Array.from(fileList ?? []).slice(
+      0,
+      Math.max(0, MAX_IMAGES - attachments.length),
+    );
+    if (!files.length) return;
+
+    const pending = files.map((file) => ({
+      id: crypto.randomUUID(),
+      file,
+      previewUrl: URL.createObjectURL(file),
+      status: "uploading",
+    }));
+    setAttachments((prev) => [...prev, ...pending]);
+
+    for (const item of pending) {
+      try {
+        // Private, like every other brand upload — the model reads it via a
+        // server-side base64 inline (see the chat route), and the browser
+        // reads it back through /api/brands/[slug]/chat/image, which is the
+        // only thing that can present a store-token-authenticated fetch.
+        const blob = await upload(
+          `${brandSlug}/chat/${crypto.randomUUID()}-${item.file.name}`,
+          item.file,
+          {
+            access: "private",
+            handleUploadUrl: "/api/blob/upload",
+            clientPayload: JSON.stringify({ brandSlug, kind: "chat-image" }),
+          },
+        );
+        setAttachments((prev) =>
+          prev.map((a) =>
+            a.id === item.id
+              ? { ...a, status: "done", url: blob.url, mediaType: item.file.type }
+              : a,
+          ),
+        );
+      } catch (err) {
+        setAttachments((prev) => prev.filter((a) => a.id !== item.id));
+        console.error("image upload failed", err);
+      }
+    }
+  }
+
+  function removeAttachment(id) {
+    setAttachments((prev) => {
+      const found = prev.find((a) => a.id === id);
+      if (found) URL.revokeObjectURL(found.previewUrl);
+      return prev.filter((a) => a.id !== id);
+    });
+  }
+
   function submit(text) {
     const trimmed = text.trim();
-    if (!trimmed || busy) return;
-    sendMessage({ text: trimmed });
+    if (busy || uploading || needsVisionSwitch) return;
+    if (!trimmed && readyImages.length === 0) return;
+
+    sendMessage({
+      text: trimmed,
+      files: readyImages.map((a) => ({
+        type: "file",
+        mediaType: a.mediaType,
+        url: a.url,
+        filename: a.file.name,
+      })),
+    });
     setInput("");
+    attachments.forEach((a) => URL.revokeObjectURL(a.previewUrl));
+    setAttachments([]);
     requestAnimationFrame(resizeTextarea);
   }
+
+  const canSubmit =
+    !busy && !uploading && !needsVisionSwitch && (input.trim() || readyImages.length > 0);
 
   return (
     <div className="mt-8 flex flex-1 flex-col">
@@ -184,7 +311,47 @@ export default function AskChat({ brandSlug, families, defaultModelId }) {
         }}
         className="sticky bottom-0 mt-8 space-y-2 pb-6 pt-4"
       >
+        <AttachmentStrip attachments={attachments} onRemove={removeAttachment} />
+
         <div className="flex items-end gap-2 rounded-2xl border border-zinc-300 bg-zinc-50 p-2 shadow-sm focus-within:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-900">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/png,image/jpeg,image/webp,image/gif"
+            multiple
+            hidden
+            onChange={(event) => {
+              handleFilesSelected(event.target.files);
+              event.target.value = "";
+            }}
+          />
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={attachments.length >= MAX_IMAGES}
+            aria-label="Attach image"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-zinc-500 transition hover:bg-zinc-200 disabled:opacity-30 dark:text-zinc-400 dark:hover:bg-zinc-800"
+          >
+            <svg viewBox="0 0 16 16" fill="none" className="h-4 w-4">
+              <path
+                d="M4 10.5l2.5-2.5a1.5 1.5 0 012 0l2 2M9 8l1.5-1.5a1.5 1.5 0 012 0L14 8"
+                stroke="currentColor"
+                strokeWidth="1.3"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+              <rect
+                x="2"
+                y="3"
+                width="12"
+                height="10"
+                rx="2"
+                stroke="currentColor"
+                strokeWidth="1.3"
+              />
+              <circle cx="5.5" cy="6" r="1" fill="currentColor" />
+            </svg>
+          </button>
           <textarea
             ref={textareaRef}
             value={input}
@@ -216,7 +383,7 @@ export default function AskChat({ brandSlug, families, defaultModelId }) {
           ) : (
             <button
               type="submit"
-              disabled={!input.trim()}
+              disabled={!canSubmit}
               className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-zinc-950 text-white transition hover:bg-zinc-800 disabled:opacity-40 dark:bg-zinc-50 dark:text-zinc-950"
               aria-label="Send"
             >
@@ -234,10 +401,21 @@ export default function AskChat({ brandSlug, families, defaultModelId }) {
         </div>
 
         <div className="flex items-center justify-between px-1">
-          <ModelPicker families={families} modelId={modelId} onChange={setModelId} />
-          <p className="font-mono text-[10px] text-zinc-400">
-            Enter to send · Shift+Enter for new line
-          </p>
+          <ModelPicker
+            families={families}
+            modelId={modelId}
+            onChange={setModelId}
+            requireVision={hasImages}
+          />
+          {needsVisionSwitch ? (
+            <p className="font-mono text-[10px] text-amber-600 dark:text-amber-400">
+              Switch to a vision model to send an image
+            </p>
+          ) : (
+            <p className="font-mono text-[10px] text-zinc-400">
+              Enter to send · Shift+Enter for new line
+            </p>
+          )}
         </div>
       </form>
     </div>

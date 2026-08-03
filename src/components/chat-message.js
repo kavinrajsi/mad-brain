@@ -13,6 +13,12 @@ function partsText(parts) {
     .join("");
 }
 
+function imageParts(parts) {
+  return (parts ?? []).filter(
+    (part) => part.type === "file" && part.mediaType?.startsWith("image/"),
+  );
+}
+
 function CopyButton({ text }) {
   const [copied, setCopied] = useState(false);
   return (
@@ -67,13 +73,29 @@ function Sources({ brandSlug, sources }) {
 
 export default function ChatMessage({ role, parts, metadata, brandSlug }) {
   const text = partsText(parts);
+  const images = imageParts(parts);
 
   if (role === "user") {
     return (
-      <div className="flex justify-end">
-        <p className="max-w-[75%] whitespace-pre-wrap rounded-2xl bg-zinc-100 px-4 py-2.5 text-sm leading-6 text-zinc-800 dark:bg-zinc-900 dark:text-zinc-200">
-          {text}
-        </p>
+      <div className="flex flex-col items-end gap-1.5">
+        {images.length ? (
+          <div className="flex flex-wrap justify-end gap-1.5">
+            {images.map((image, index) => (
+              // eslint-disable-next-line @next/next/no-img-element -- proxied private Blob URL, not a local/optimizable asset
+              <img
+                key={image.url ?? index}
+                src={`/api/brands/${brandSlug}/chat/image?url=${encodeURIComponent(image.url)}`}
+                alt={image.filename ?? "Attached image"}
+                className="h-40 w-auto rounded-xl object-cover"
+              />
+            ))}
+          </div>
+        ) : null}
+        {text ? (
+          <p className="max-w-[75%] whitespace-pre-wrap rounded-2xl bg-zinc-100 px-4 py-2.5 text-sm leading-6 text-zinc-800 dark:bg-zinc-900 dark:text-zinc-200">
+            {text}
+          </p>
+        ) : null}
       </div>
     );
   }
