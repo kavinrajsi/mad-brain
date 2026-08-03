@@ -182,9 +182,9 @@ export default function AskChat({ brandSlug, families, defaultModelId }) {
           event.preventDefault();
           submit(input);
         }}
-        className="sticky bottom-0 mt-8 space-y-2 bg-white pb-6 pt-4 dark:bg-black"
+        className="sticky bottom-0 mt-8 space-y-2 pb-6 pt-4"
       >
-        <div className="flex items-end gap-2 rounded-2xl border border-zinc-300 bg-transparent p-2 shadow-sm focus-within:border-zinc-500 dark:border-zinc-700">
+        <div className="flex items-end gap-2 rounded-2xl border border-zinc-300 bg-zinc-50 p-2 shadow-sm focus-within:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-900">
           <textarea
             ref={textareaRef}
             value={input}
