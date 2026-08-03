@@ -26,6 +26,25 @@ export const MODELS = [
     context: 1000000,
     note: "Faster and cheaper than Opus, still strong on nuance.",
   },
+  // Id is Anthropic's dated model name, not OpenRouter's "claude-haiku-4.5"
+  // alias — chatModel() strips the "anthropic/" prefix and calls the
+  // Anthropic API directly when ANTHROPIC_API_KEY is set, and only the dated
+  // id is valid there (verified live: "claude-haiku-4.5" 404s on Anthropic's
+  // API). If ANTHROPIC_API_KEY is ever removed this id would need to change
+  // to route through OpenRouter correctly.
+  {
+    id: "anthropic/claude-haiku-4-5-20251001",
+    label: "Claude Haiku 4.5",
+    family: "Anthropic",
+    context: 200000,
+    note: "Fastest and cheapest Claude — good for high-volume checks.",
+  },
+  {
+    id: "anthropic/claude-fable-5",
+    label: "Claude Fable 5",
+    family: "Anthropic",
+    context: 1000000,
+  },
   // OpenAI
   {
     id: "openai/gpt-5.6-terra",

@@ -21,7 +21,9 @@ export function openrouterModel(modelId) {
   const openrouter = createOpenRouter({
     apiKey: required("OPENROUTER_API_KEY"),
   });
-  return openrouter.chat(modelId);
+  // usage.include surfaces providerMetadata.openrouter.usage.cost (USD),
+  // computed by OpenRouter itself — the only real $ source in this app.
+  return openrouter.chat(modelId, { usage: { include: true } });
 }
 
 const ANTHROPIC_PREFIX = "anthropic/";

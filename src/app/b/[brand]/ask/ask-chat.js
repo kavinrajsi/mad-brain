@@ -17,11 +17,13 @@ const STARTERS = [
 export default function AskChat({ brandSlug, families, defaultModelId }) {
   const [modelId, setModelId] = useState(defaultModelId);
   const [input, setInput] = useState("");
+  // One id per mounted conversation; the server records history under it.
+  const [chatId] = useState(() => crypto.randomUUID());
 
   const { messages, sendMessage, status, error } = useChat({
     transport: new DefaultChatTransport({
       api: `/api/brands/${brandSlug}/chat`,
-      body: () => ({ modelId }),
+      body: () => ({ modelId, chatId }),
     }),
   });
 

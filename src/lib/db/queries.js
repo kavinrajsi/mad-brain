@@ -7,11 +7,14 @@ import {
   brandMembers,
   brandProfiles,
   brands,
+  chatMessages,
+  chats,
   documentChunks,
   documentReads,
   documents,
   ideaChecks,
   invites,
+  users,
 } from "./schema";
 
 export function slugify(input) {
@@ -244,13 +247,138 @@ export async function getChunksByPineconeIds({ brandId, pineconeIds }) {
     );
 }
 
+/**
+ * Persists one chat turn: the chat row plus every message the client re-sent.
+ *
+ * The chat id comes from the client, so ownership is verified before any
+ * message is written — a forged id belonging to another brand's chat is
+ * abandoned, never appended to. The neon-http driver has no interactive
+ * transactions; every statement here is idempotent, so a retry after a partial
+ * failure converges rather than duplicating.
+ */
+export async function saveChat({
+  chatId,
+  brandId,
+  userId,
+  modelId,
+  title,
+  messages,
+}) {
+  await db
+    .insert(chats)
+    .values({ id: chatId, brandId, userId, modelId, title })
+    .onConflictDoNothing();
+
+  const [chat] = await db
+    .select({ brandId: chats.brandId })
+    .from(chats)
+    .where(eq(chats.id, chatId));
+  if (!chat || chat.brandId !== brandId) return;
+
+  await db
+    .update(chats)
+    .set({ modelId, updatedAt: new Date() })
+    .where(eq(chats.id, chatId));
+
+  if (!messages.length) return;
+  await db
+    .insert(chatMessages)
+    .values(
+      messages.map((message, index) => ({
+        id: message.id,
+        chatId,
+        role: message.role,
+        parts: message.parts ?? [],
+        metadata: message.metadata ?? null,
+        ordinal: index,
+      })),
+    )
+    .onConflictDoNothing();
+}
+
+export async function listBrandChats(brandId, limit = 50) {
+  return db
+    .select({
+      id: chats.id,
+      title: chats.title,
+      modelId: chats.modelId,
+      createdAt: chats.createdAt,
+      updatedAt: chats.updatedAt,
+      // Left join: a chat must still show if its user was later removed.
+      memberName: sql`coalesce(${users.displayName}, ${users.email})`,
+    })
+    .from(chats)
+    .leftJoin(users, eq(users.id, chats.userId))
+    .where(eq(chats.brandId, brandId))
+    .orderBy(desc(chats.updatedAt))
+    .limit(limit);
+}
+
+/** Brand-scoped on both queries so a guessed chat id never crosses brands. */
+export async function getChatWithMessages({ chatId, brandId }) {
+  const [chat] = await db
+    .select({
+      id: chats.id,
+      brandId: chats.brandId,
+      userId: chats.userId,
+      title: chats.title,
+      modelId: chats.modelId,
+      createdAt: chats.createdAt,
+      updatedAt: chats.updatedAt,
+      memberName: sql`coalesce(${users.displayName}, ${users.email})`,
+    })
+    .from(chats)
+    .leftJoin(users, eq(users.id, chats.userId))
+    .where(and(eq(chats.id, chatId), eq(chats.brandId, brandId)));
+  if (!chat) return null;
+
+  const messages = await db
+    .select()
+    .from(chatMessages)
+    .where(eq(chatMessages.chatId, chatId))
+    .orderBy(asc(chatMessages.ordinal));
+
+  return { ...chat, messages };
+}
+
 export async function listIdeaChecks(brandId, limit = 50) {
   return db
-    .select()
+    .select({
+      id: ideaChecks.id,
+      brandId: ideaChecks.brandId,
+      userId: ideaChecks.userId,
+      ideaText: ideaChecks.ideaText,
+      modelId: ideaChecks.modelId,
+      overallScore: ideaChecks.overallScore,
+      verdict: ideaChecks.verdict,
+      citations: ideaChecks.citations,
+      usage: ideaChecks.usage,
+      createdAt: ideaChecks.createdAt,
+      memberName: sql`coalesce(${users.displayName}, ${users.email})`,
+    })
     .from(ideaChecks)
+    .leftJoin(users, eq(users.id, ideaChecks.userId))
     .where(eq(ideaChecks.brandId, brandId))
     .orderBy(desc(ideaChecks.createdAt))
     .limit(limit);
+}
+
+/**
+ * Per-chat token/cost totals for the History list. Rows with no `usage` key
+ * on any message (pre-migration history, or every turn Anthropic-direct for
+ * cost) sum to null — expected, not a bug.
+ */
+export async function sumChatUsage(brandId) {
+  const result = await db.execute(sql`
+    select cm.chat_id as "chatId",
+           sum((cm.metadata->'usage'->>'totalTokens')::bigint) as "totalTokens",
+           sum((cm.metadata->'usage'->>'costUsd')::numeric) as "costUsd"
+    from chat_messages cm
+    join chats c on c.id = cm.chat_id
+    where c.brand_id = ${brandId}
+    group by cm.chat_id
+  `);
+  return result.rows;
 }
 
 export async function listBrandMembers(brandId) {

@@ -17,10 +17,19 @@ import { config } from "dotenv";
 
 config({ path: new URL("../.env.local", import.meta.url).pathname });
 
-const { eq } = await import("drizzle-orm");
+const { eq, inArray } = await import("drizzle-orm");
 const { db } = await import("../src/lib/db/client.js");
-const { brandMembers, brandProfiles, documentChunks, documents, brands, ideaChecks, invites } =
-  await import("../src/lib/db/schema.js");
+const {
+  brandMembers,
+  brandProfiles,
+  chatMessages,
+  chats,
+  documentChunks,
+  documents,
+  brands,
+  ideaChecks,
+  invites,
+} = await import("../src/lib/db/schema.js");
 const { brandIndex } = await import("../src/lib/ai/pinecone.js");
 const { brandNamespace } = await import("../src/lib/ai/config.js");
 
@@ -52,11 +61,26 @@ for (const [label, table, column] of [
   ["members", brandMembers, brandMembers.brandId],
   ["invites", invites, invites.brandId],
   ["idea checks", ideaChecks, ideaChecks.brandId],
+  ["chats", chats, chats.brandId],
   ["profile", brandProfiles, brandProfiles.brandId],
 ]) {
   const rows = await db.select().from(table).where(eq(column, brand.id));
   counts[label] = rows.length;
 }
+
+// chat_messages has no brand column; it hangs off chats and cascades with them.
+const brandChats = await db
+  .select({ id: chats.id })
+  .from(chats)
+  .where(eq(chats.brandId, brand.id));
+counts["chat messages"] = brandChats.length
+  ? (
+      await db
+        .select()
+        .from(chatMessages)
+        .where(inArray(chatMessages.chatId, brandChats.map((c) => c.id)))
+    ).length
+  : 0;
 
 const stats = await brandIndex().describeIndexStats();
 const vectors = stats.namespaces?.[brandNamespace(brand.id)]?.recordCount ?? 0;

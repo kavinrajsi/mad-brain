@@ -1,0 +1,1 @@
+ALTER TABLE "idea_checks" ADD COLUMN "usage" jsonb;

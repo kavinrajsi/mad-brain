@@ -17,6 +17,7 @@ export async function seedBrand({ slug, name, profile, documents: specs, ownerEm
   const { brandMembers, brandProfiles, brands, documents, invites, users } =
     await import("../../src/lib/db/schema.js");
   const { ingestDocument } = await import("../../src/lib/ingest/pipeline.js");
+  const { profileToText } = await import("../../src/lib/brand-profile.js");
 
   let [brand] = await db.select().from(brands).where(eq(brands.slug, slug));
 
@@ -35,6 +36,46 @@ export async function seedBrand({ slug, name, profile, documents: specs, ownerEm
       set: { ...profile, updatedAt: new Date() },
     });
   console.log("Profile written.");
+
+  // Mirror actions/profile.js: the profile is also indexed as a document so
+  // Ask can retrieve and cite it. Without this, a seeded brand's rubric is
+  // invisible to chat until someone re-saves the profile form by hand.
+  // Rendered from the merged DB row, not the seed's profile object — fields
+  // the seed doesn't carry (prism, rules entered in the form) must survive.
+  const [mergedProfile] = await db
+    .select()
+    .from(brandProfiles)
+    .where(eq(brandProfiles.brandId, brand.id));
+  const profileBody = profileToText(mergedProfile, name);
+  const [existingProfileDoc] = await db
+    .select({ id: documents.id })
+    .from(documents)
+    .where(
+      and(eq(documents.brandId, brand.id), eq(documents.sourceType, "profile")),
+    )
+    .limit(1);
+
+  let profileDocId = existingProfileDoc?.id;
+  if (profileDocId) {
+    await db
+      .update(documents)
+      .set({ body: profileBody, status: "pending", error: null, updatedAt: new Date() })
+      .where(eq(documents.id, profileDocId));
+  } else {
+    const [row] = await db
+      .insert(documents)
+      .values({
+        brandId: brand.id,
+        title: `${name} — brand profile`,
+        sourceType: "profile",
+        body: profileBody,
+        status: "pending",
+      })
+      .returning({ id: documents.id });
+    profileDocId = row.id;
+  }
+  const profileIngest = await ingestDocument(profileDocId);
+  console.log(`  ${name} — brand profile — ${profileIngest.chunks} chunks`);
 
   for (const [index, spec] of specs.entries()) {
     const [existing] = await db

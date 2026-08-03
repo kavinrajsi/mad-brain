@@ -56,6 +56,7 @@ export async function runFitCheckAction(_prevState, formData) {
         suggestions: result.suggestions,
       },
       citations: result.citations,
+      usage: result.usage,
     })
     .returning({ id: ideaChecks.id });
 

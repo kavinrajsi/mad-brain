@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
 import { getBrandAccess } from "@/lib/auth/dal";
-import { linesToArray, profileToText } from "@/lib/brand-profile";
+import { linesToArray, PRISM_FACETS, profileToText } from "@/lib/brand-profile";
 import { db } from "@/lib/db/client";
 import { brandProfiles, documents } from "@/lib/db/schema";
 import { ingestDocument } from "@/lib/ingest/pipeline";
@@ -23,6 +23,15 @@ export async function saveBrandProfileAction(_prevState, formData) {
     return { error: "Mission and audience must be under 4000 characters." };
   }
 
+  const prism = {};
+  for (const facet of PRISM_FACETS) {
+    const parsed = textField.safeParse(formData.get(`prism_${facet.key}`) ?? "");
+    if (!parsed.success) {
+      return { error: `${facet.label} must be under 4000 characters.` };
+    }
+    if (parsed.data) prism[facet.key] = parsed.data;
+  }
+
   const profile = {
     mission: mission.data || null,
     audience: audience.data || null,
@@ -31,6 +40,8 @@ export async function saveBrandProfileAction(_prevState, formData) {
     dos: linesToArray(formData.get("dos")),
     donts: linesToArray(formData.get("donts")),
     visual: linesToArray(formData.get("visual")),
+    prism,
+    rules: linesToArray(formData.get("rules")),
   };
 
   await db

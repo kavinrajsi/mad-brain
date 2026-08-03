@@ -2,7 +2,7 @@ import { z } from "zod";
 
 // Relative imports only, and no server-only side effects: this module is pure
 // so it can be exercised outside the Next bundler, with a mock model.
-import { PILLARS } from "../brand-profile.js";
+import { PILLARS, PRISM_FACETS } from "../brand-profile.js";
 
 const PILLAR_KEYS = PILLARS.map((p) => p.key);
 
@@ -96,6 +96,11 @@ export function renderRubric(profile, brandName) {
       ? `${label}:\n${value.map((v) => `  - ${v}`).join("\n")}`
       : null;
 
+  const prismLines = PRISM_FACETS.map((facet) => {
+    const text = profile.prism?.[facet.key]?.trim();
+    return text ? `  - ${facet.label}: ${text}` : null;
+  }).filter(Boolean);
+
   return [
     `Brand: ${brandName}`,
     profile.mission ? `Mission: ${profile.mission}` : null,
@@ -105,6 +110,8 @@ export function renderRubric(profile, brandName) {
     list("Always do", profile.dos),
     list("Never do", profile.donts),
     list("Visual rules", profile.visual),
+    prismLines.length ? `Brand prism:\n${prismLines.join("\n")}` : null,
+    list("Rule book", profile.rules),
   ]
     .filter(Boolean)
     .join("\n\n");

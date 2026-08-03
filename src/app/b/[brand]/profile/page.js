@@ -36,6 +36,8 @@ export default async function ProfilePage({ params }) {
           dos: arrayToLines(profile?.dos),
           donts: arrayToLines(profile?.donts),
           visual: arrayToLines(profile?.visual),
+          prism: profile?.prism ?? {},
+          rules: arrayToLines(profile?.rules),
         }}
       />
     </main>

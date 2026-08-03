@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 
 import { saveBrandProfileAction } from "@/lib/actions/profile";
+import { PRISM_FACETS } from "@/lib/brand-profile";
 
 const FIELDS = [
   {
@@ -78,6 +79,60 @@ export default function ProfileForm({ brandSlug, initial, readOnly }) {
           />
         </div>
       ))}
+
+      <div className="border-t border-zinc-200 pt-8 dark:border-zinc-800">
+        <h2 className="text-sm font-semibold text-zinc-950 dark:text-zinc-50">
+          Brand prism
+        </h2>
+        <p className="mt-1 text-xs leading-5 text-zinc-500">
+          Kapferer&apos;s six facets of brand identity. Optional, but each one
+          filled in gives the AI another edge to reason against.
+        </p>
+        <div className="mt-4 space-y-6">
+          {PRISM_FACETS.map((facet) => (
+            <div key={facet.key}>
+              <label
+                htmlFor={`prism_${facet.key}`}
+                className="block text-sm font-medium text-zinc-950 dark:text-zinc-50"
+              >
+                {facet.label}
+              </label>
+              <p className="mt-1 text-xs leading-5 text-zinc-500">
+                {facet.help}
+              </p>
+              <textarea
+                id={`prism_${facet.key}`}
+                name={`prism_${facet.key}`}
+                rows={2}
+                readOnly={readOnly}
+                defaultValue={initial.prism?.[facet.key] ?? ""}
+                className="mt-2 w-full rounded-lg border border-zinc-300 bg-transparent px-3 py-2 text-sm leading-6 outline-none read-only:opacity-70 focus:border-zinc-500 dark:border-zinc-700"
+              />
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="border-t border-zinc-200 pt-8 dark:border-zinc-800">
+        <label
+          htmlFor="rules"
+          className="block text-sm font-semibold text-zinc-950 dark:text-zinc-50"
+        >
+          Rule book
+        </label>
+        <p className="mt-1 text-xs leading-5 text-zinc-500">
+          One rule per line. Hard rules the brand never breaks — these carry
+          the same weight as the never-do list in a fit check.
+        </p>
+        <textarea
+          id="rules"
+          name="rules"
+          rows={6}
+          readOnly={readOnly}
+          defaultValue={initial.rules}
+          className="mt-2 w-full rounded-lg border border-zinc-300 bg-transparent px-3 py-2 text-sm leading-6 outline-none read-only:opacity-70 focus:border-zinc-500 dark:border-zinc-700"
+        />
+      </div>
 
       {readOnly ? (
         <p className="text-sm text-zinc-500">

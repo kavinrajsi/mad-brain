@@ -11,6 +11,7 @@ import {
 } from "./prompt.js";
 import { retrieveBrandContext } from "./retrieve.js";
 import { chatModel } from "./providers.js";
+import { summarizeUsage } from "./usage.js";
 
 export async function runFitCheck({
   brandId,
@@ -45,12 +46,15 @@ export async function runFitCheck({
   // to nothing — which is a distinct and observed outcome: an identical prompt
   // threw "No output generated." on one run and returned a full verdict on the
   // next. Retrying once turns a visible error into a slower answer.
-  let output;
+  let output, usage, providerMetadata;
   try {
-    ({ output } = await call());
+    ({ output, usage, providerMetadata } = await call());
   } catch (error) {
     if (!/No output generated/i.test(String(error?.message ?? error))) throw error;
-    ({ output } = await call());
+    // Only the retry's usage is captured — the first attempt's tokens were
+    // spent but its usage is unreachable from the thrown error. Acceptable;
+    // retries are rare.
+    ({ output, usage, providerMetadata } = await call());
   }
 
   const { citations, dropped } = reconcileCitations(output.citations, chunks);
@@ -62,5 +66,6 @@ export async function runFitCheck({
     citations,
     droppedCitations: dropped,
     retrieved: chunks.length,
+    usage: summarizeUsage(usage, providerMetadata),
   };
 }

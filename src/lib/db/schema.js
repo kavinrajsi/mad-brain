@@ -104,6 +104,12 @@ export const brandProfiles = pgTable("brand_profiles", {
   dos: jsonb("dos").default([]),
   donts: jsonb("donts").default([]),
   visual: jsonb("visual").default([]),
+  // Kapferer prism: { physique, personality, culture, relationship,
+  // reflection, selfImage } — free text per facet.
+  prism: jsonb("prism").default({}),
+  // Rule book: hard rules, one string each. Rendered into the profile
+  // document and the fit-check rubric alongside the dos/don'ts.
+  rules: jsonb("rules").default([]),
   updatedAt: timestamp("updated_at", { withTimezone: true })
     .defaultNow()
     .notNull(),
@@ -201,9 +207,59 @@ export const ideaChecks = pgTable(
     overallScore: integer("overall_score"),
     verdict: jsonb("verdict"),
     citations: jsonb("citations"),
+    usage: jsonb("usage"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()
       .notNull(),
   },
   (t) => [index("idea_checks_brand_created_idx").on(t.brandId, t.createdAt)],
+);
+
+// Every Ask conversation is kept, for the same reason idea_checks is: past
+// answers are how new joiners learn where the brand's edges are.
+export const chats = pgTable(
+  "chats",
+  {
+    // Client-generated per conversation, so the id must never be trusted to
+    // prove ownership — writes verify brand_id against the session first.
+    id: uuid("id").primaryKey(),
+    brandId: uuid("brand_id")
+      .notNull()
+      .references(() => brands.id, { onDelete: "cascade" }),
+    userId: text("user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    title: text("title").notNull(),
+    modelId: text("model_id").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (t) => [index("chats_brand_updated_idx").on(t.brandId, t.updatedAt)],
+);
+
+export const chatMessages = pgTable(
+  "chat_messages",
+  {
+    // AI SDK message id. Scoped to the chat rather than globally unique so a
+    // colliding (or forged) client id can never block another chat's insert.
+    id: text("id").notNull(),
+    chatId: uuid("chat_id")
+      .notNull()
+      .references(() => chats.id, { onDelete: "cascade" }),
+    role: text("role").notNull(),
+    parts: jsonb("parts").notNull(),
+    metadata: jsonb("metadata"),
+    ordinal: integer("ordinal").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.chatId, t.id] }),
+    index("chat_messages_chat_ordinal_idx").on(t.chatId, t.ordinal),
+  ],
 );

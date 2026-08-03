@@ -15,6 +15,27 @@
       "when": 1785566726291,
       "tag": "0001_wealthy_wolfpack",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1785713167211,
+      "tag": "0002_dark_mimic",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1785714117709,
+      "tag": "0003_flaky_landau",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1785726158167,
+      "tag": "0004_normal_redwing",
+      "breakpoints": true
     }
   ]
 }
