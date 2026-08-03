@@ -46,17 +46,31 @@ function CodeBlock({ language, children }) {
   );
 }
 
-// Citation badge target, e.g. `[1](citation:1)` — never a real URL, so it's
+// Citation chip target, e.g. `[•](citation:1,2)` — indices comma-joined when
+// several adjacent markers were grouped. Never a real URL, so it's
 // intercepted in the `a` component below instead of reaching the browser.
-const CITATION_HREF = /^citation:(\d+)$/;
+const CITATION_HREF = /^citation:([\d,]+)$/;
 
-function CitationLink({ href, citationsByIndex, brandSlug, children, ...props }) {
+// Anchored popover, same open/backdrop/panel pattern as ModelPicker in
+// ask-chat.js. Every element inside has to be phrasing content (span/button,
+// not div/p) — this chip renders inline inside a markdown <p>, and a <div>
+// there would make the browser's HTML parser force-close the paragraph early.
+function CitationChip({ href, citationsByIndex, brandSlug, children, ...props }) {
+  const [open, setOpen] = useState(false);
+  const [page, setPage] = useState(0);
+
   const match = CITATION_HREF.exec(href ?? "");
-  const citation = match && citationsByIndex?.get(Number(match[1]));
+  const group = match
+    ? match[1]
+        .split(",")
+        .map((n) => citationsByIndex?.get(Number(n)))
+        .filter(Boolean)
+    : [];
 
-  if (!citation) {
+  if (!group.length) {
     // Marker didn't resolve to a known source (stale index, or a plain link
-    // that happens to read "citation:n") — fall back to a normal anchor.
+    // that happens to read "citation:..."), or this is a genuine markdown
+    // link the model wrote — render a normal anchor.
     return (
       <a
         className="underline underline-offset-2 hover:text-zinc-950 dark:hover:text-zinc-50"
@@ -70,14 +84,76 @@ function CitationLink({ href, citationsByIndex, brandSlug, children, ...props })
     );
   }
 
+  const chip = group[0];
+  const current = group[Math.min(page, group.length - 1)];
+  const chipInitial = chip.title?.trim()?.[0]?.toUpperCase() ?? "?";
+
   return (
-    <a
-      href={`/brand/${brandSlug}/knowledge/${citation.documentId}`}
-      title={citation.title}
-      className="mx-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-zinc-100 px-1 align-super font-mono text-[10px] leading-none text-zinc-500 no-underline hover:bg-zinc-200 hover:text-zinc-900 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-700 dark:hover:text-zinc-100"
-    >
-      {match[1]}
-    </a>
+    <span className="relative mx-0.5 inline-block align-middle">
+      <button
+        type="button"
+        onClick={() =>
+          setOpen((wasOpen) => {
+            if (!wasOpen) setPage(0);
+            return !wasOpen;
+          })
+        }
+        className="inline-flex items-center gap-1 rounded-full bg-zinc-100 py-0.5 pl-0.5 pr-1.5 align-middle text-[11px] leading-none text-zinc-600 hover:bg-zinc-200 hover:text-zinc-900 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-700 dark:hover:text-zinc-100"
+      >
+        <span className="flex h-4 w-4 items-center justify-center rounded-full bg-zinc-950 font-mono text-[9px] text-white dark:bg-zinc-50 dark:text-zinc-950">
+          {chipInitial}
+        </span>
+        <span className="max-w-[8rem] truncate">{chip.title}</span>
+        {group.length > 1 ? (
+          <span className="text-zinc-400">+{group.length - 1}</span>
+        ) : null}
+      </button>
+
+      {open ? (
+        <>
+          <span className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
+          <span className="absolute left-0 top-full z-20 mt-2 block w-72 rounded-2xl border border-zinc-200 bg-white p-3 text-left shadow-lg dark:border-zinc-800 dark:bg-zinc-950">
+            {group.length > 1 ? (
+              <span className="mb-2 flex items-center justify-between">
+                <button
+                  type="button"
+                  onClick={() => setPage((p) => Math.max(0, p - 1))}
+                  disabled={page === 0}
+                  aria-label="Previous source"
+                  className="rounded p-1 text-zinc-400 hover:bg-zinc-100 disabled:opacity-30 dark:hover:bg-zinc-900"
+                >
+                  ◀
+                </button>
+                <span className="font-mono text-[10px] text-zinc-400">
+                  {page + 1}/{group.length}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setPage((p) => Math.min(group.length - 1, p + 1))}
+                  disabled={page === group.length - 1}
+                  aria-label="Next source"
+                  className="rounded p-1 text-zinc-400 hover:bg-zinc-100 disabled:opacity-30 dark:hover:bg-zinc-900"
+                >
+                  ▶
+                </button>
+              </span>
+            ) : null}
+            <span className="block text-sm font-medium text-zinc-950 dark:text-zinc-50">
+              {current.title}
+            </span>
+            <span className="mt-1 block border-l-2 border-zinc-300 pl-2 text-xs leading-5 text-zinc-600 dark:border-zinc-700 dark:text-zinc-400">
+              {current.snippet}
+            </span>
+            <a
+              href={`/brand/${brandSlug}/knowledge/${current.documentId}`}
+              className="mt-2 inline-block text-xs text-zinc-500 underline underline-offset-2 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
+            >
+              Open document ↗
+            </a>
+          </span>
+        </>
+      ) : null}
+    </span>
   );
 }
 
@@ -147,6 +223,11 @@ const COMPONENTS = {
   ),
 };
 
+// Matches a run of adjacent bracket-number markers, e.g. "[1][2]" — the
+// system prompt asks the model to place co-referenced numbers together like
+// this so they group into one chip. A stray "[1] [2]" (with a space) is left
+// as two separate single-citation chips instead of one grouped chip.
+const MARKER_GROUP = /(?:\[(\d+)\])+/g;
 const MARKER = /\[(\d+)\]/g;
 
 export default function Markdown({ children, citations, brandSlug }) {
@@ -155,21 +236,25 @@ export default function Markdown({ children, citations, brandSlug }) {
     return new Map(citations.map((citation) => [citation.index, citation]));
   }, [citations]);
 
-  // Rewrite recognized `[n]` markers into markdown links pointing at the
-  // citation: pseudo-scheme so CitationLink can intercept them; markers
-  // split across a streaming chunk boundary just don't match yet and render
-  // as plain text until the closing `]` arrives.
+  // Rewrite each run of recognized `[n]` markers into a single markdown link
+  // pointing at the citation: pseudo-scheme (indices comma-joined) so
+  // CitationChip can intercept it; a run split across a streaming chunk
+  // boundary just doesn't match yet and renders as plain text until the
+  // closing `]` arrives.
   const text = citationsByIndex
-    ? String(children ?? "").replace(MARKER, (raw, index) =>
-        citationsByIndex.has(Number(index)) ? `[${index}](citation:${index})` : raw,
-      )
+    ? String(children ?? "").replace(MARKER_GROUP, (raw) => {
+        const indices = [...raw.matchAll(MARKER)]
+          .map((m) => Number(m[1]))
+          .filter((index) => citationsByIndex.has(index));
+        return indices.length ? `[•](citation:${indices.join(",")})` : raw;
+      })
     : children;
 
   const components = useMemo(
     () => ({
       ...COMPONENTS,
       a: (props) => (
-        <CitationLink {...props} citationsByIndex={citationsByIndex} brandSlug={brandSlug} />
+        <CitationChip {...props} citationsByIndex={citationsByIndex} brandSlug={brandSlug} />
       ),
     }),
     [citationsByIndex, brandSlug],

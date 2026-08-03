@@ -82,7 +82,9 @@ When a sentence draws on a CONTEXT passage, cite it inline immediately after
 that sentence using the passage's bracket number from CONTEXT, e.g. "...as
 stated in the brand guide [1]." Only use numbers that appear in CONTEXT. Do
 not invent numbers, and do not bundle citations at the end of the answer —
-place each one next to the specific claim it supports.`;
+place each one next to the specific claim it supports. When more than one
+passage supports the same claim, put their numbers together right after it,
+e.g. "...as stated in the brand guide [1][2]."`;
 
 /** Formats retrieved chunks for a prompt, tagged so the model can cite them. */
 export function formatContext(chunks) {

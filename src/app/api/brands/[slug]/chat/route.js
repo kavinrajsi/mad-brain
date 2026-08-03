@@ -114,6 +114,7 @@ export async function POST(request, { params }) {
     index: index + 1,
     documentId: chunk.documentId,
     title: chunk.documentTitle,
+    snippet: chunk.content.slice(0, 220).trim(),
   }));
   let finishStepCostUsd = null;
 
