@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import ReactMarkdown from "react-markdown";
+import ReactMarkdown, { defaultUrlTransform } from "react-markdown";
 import remarkGfm from "remark-gfm";
 
 /**
@@ -50,6 +50,14 @@ function CodeBlock({ language, children }) {
 // several adjacent markers were grouped. Never a real URL, so it's
 // intercepted in the `a` component below instead of reaching the browser.
 const CITATION_HREF = /^citation:([\d,]+)$/;
+
+// react-markdown sanitizes every href/src through an allowlist of real URL
+// protocols (http, mailto, ...) and silently rewrites anything else to "" —
+// citation: is a made-up scheme, so without this override every chip's href
+// gets nulled out before CitationChip ever sees it.
+function urlTransform(value) {
+  return CITATION_HREF.test(value) ? value : defaultUrlTransform(value);
+}
 
 // Anchored popover, same open/backdrop/panel pattern as ModelPicker in
 // ask-chat.js. Every element inside has to be phrasing content (span/button,
@@ -261,7 +269,7 @@ export default function Markdown({ children, citations, brandSlug }) {
   );
 
   return (
-    <ReactMarkdown remarkPlugins={[remarkGfm]} components={components}>
+    <ReactMarkdown remarkPlugins={[remarkGfm]} components={components} urlTransform={urlTransform}>
       {text}
     </ReactMarkdown>
   );
