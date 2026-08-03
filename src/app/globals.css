@@ -24,3 +24,14 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* Tiptap's Placeholder extension (src/components/rich-text-field.js) marks
+   the empty first paragraph with these hooks; content itself comes from the
+   editor's `placeholder` option via the data attribute, not from here. */
+.rich-text-editor .is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+  color: #a1a1aa;
+}

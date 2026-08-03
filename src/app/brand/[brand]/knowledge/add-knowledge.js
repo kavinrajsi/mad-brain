@@ -4,6 +4,8 @@ import { upload } from "@vercel/blob/client";
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 
+import RichTextField from "@/components/rich-text-field";
+
 const TABS = [
   { key: "upload", label: "Upload a file" },
   { key: "note", label: "Write a note" },
@@ -16,6 +18,10 @@ export default function AddKnowledge({ brandSlug }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
   const fileRef = useRef(null);
+  // RichTextField is uncontrolled and ignores a native form reset (it only
+  // clears form controls, not the ProseMirror DOM) — bumping this key forces
+  // the note tab to remount with a fresh, empty editor after a save.
+  const [noteKey, setNoteKey] = useState(0);
 
   async function createDocument(payload) {
     const response = await fetch(`/api/brands/${brandSlug}/documents`, {
@@ -65,7 +71,7 @@ export default function AddKnowledge({ brandSlug }) {
     }
   }
 
-  async function handleSimple(event, build) {
+  async function handleSimple(event, build, { onSaved } = {}) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
     setBusy(true);
@@ -73,6 +79,7 @@ export default function AddKnowledge({ brandSlug }) {
     try {
       await createDocument(build(form));
       event.target.reset();
+      onSaved?.();
       router.refresh();
     } catch (err) {
       setError(String(err?.message ?? err));
@@ -122,13 +129,28 @@ export default function AddKnowledge({ brandSlug }) {
 
         {tab === "note" ? (
           <form
-            onSubmit={(e) =>
-              handleSimple(e, (form) => ({
-                sourceType: "note",
-                title: String(form.get("title")),
-                body: String(form.get("body")),
-              }))
-            }
+            key={noteKey}
+            onSubmit={(e) => {
+              const form = new FormData(e.currentTarget);
+              // A hidden textarea participates in no HTML5 `required`
+              // validation, so the emptiness check that used to come free
+              // from <textarea required> has to be explicit now.
+              if (!String(form.get("body") ?? "").trim()) {
+                e.preventDefault();
+                setError("Write something first.");
+                return;
+              }
+              handleSimple(
+                e,
+                (form) => ({
+                  sourceType: "note",
+                  title: String(form.get("title")),
+                  body: String(form.get("body")),
+                  bodyHtml: String(form.get("bodyHtml") ?? ""),
+                }),
+                { onSaved: () => setNoteKey((k) => k + 1) },
+              );
+            }}
             className="flex flex-col gap-2"
           >
             <input
@@ -138,12 +160,12 @@ export default function AddKnowledge({ brandSlug }) {
               placeholder="What is this about?"
               className="rounded-lg border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none placeholder:text-zinc-400 focus:border-zinc-500 dark:border-zinc-700"
             />
-            <textarea
+            <RichTextField
               name="body"
-              required
-              rows={6}
+              htmlName="bodyHtml"
+              preset="notes"
               placeholder="Campaign learnings, past decisions, tribal knowledge — anything a new joiner would otherwise have to ask about."
-              className="rounded-lg border border-zinc-300 bg-transparent px-3 py-2 text-sm leading-6 outline-none placeholder:text-zinc-400 focus:border-zinc-500 dark:border-zinc-700"
+              minHeightClass="min-h-40"
             />
             <SubmitButton busy={busy} label="Save note" align="self-start" />
           </form>

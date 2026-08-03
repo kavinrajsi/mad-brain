@@ -4,6 +4,7 @@ import { useActionState, useState } from "react";
 
 import MarkReadButton from "./mark-read-button";
 import { updateDocumentAction } from "@/lib/actions/documents";
+import RichTextField, { RICH_TEXT_VIEW_CLASSES } from "@/components/rich-text-field";
 
 export default function DocumentDetail({
   brandSlug,
@@ -35,12 +36,13 @@ export default function DocumentDetail({
           />
 
           {canEditBody ? (
-            <textarea
+            <RichTextField
               name="body"
+              htmlName="bodyHtml"
+              preset="notes"
               defaultValue={doc.body ?? ""}
-              rows={16}
-              maxLength={200_000}
-              className="w-full rounded-lg border border-zinc-300 bg-transparent px-3 py-2 text-sm leading-6 outline-none focus:border-zinc-500 dark:border-zinc-700"
+              defaultHtml={doc.bodyHtml ?? null}
+              minHeightClass="min-h-96"
             />
           ) : (
             <p className="text-sm text-zinc-500">
@@ -130,9 +132,16 @@ export default function DocumentDetail({
             design so no passage falls into a retrieval gap — printing them in
             sequence would repeat a paragraph at every boundary.
           */}
-          <p className="whitespace-pre-wrap text-sm leading-7 text-zinc-700 dark:text-zinc-300">
-            {doc.body ?? bodyFallback}
-          </p>
+          {doc.bodyHtml ? (
+            <div
+              className={RICH_TEXT_VIEW_CLASSES}
+              dangerouslySetInnerHTML={{ __html: doc.bodyHtml }}
+            />
+          ) : (
+            <p className="whitespace-pre-wrap text-sm leading-7 text-zinc-700 dark:text-zinc-300">
+              {doc.body ?? bodyFallback}
+            </p>
+          )}
         </article>
       )}
     </>

@@ -10,6 +10,7 @@ import { db } from "@/lib/db/client";
 import { markDocumentRead } from "@/lib/db/queries";
 import { documentChunks, documents } from "@/lib/db/schema";
 import { ingestDocument } from "@/lib/ingest/pipeline";
+import { sanitizeRichText } from "@/lib/rich-text/sanitize";
 
 async function ownedDocument(slug, documentId, minRole = "admin") {
   const access = await getBrandAccess(slug, minRole);
@@ -103,6 +104,9 @@ export async function setPinnedOrderAction(_prevState, formData) {
 const updateSchema = z.object({
   title: z.string().trim().min(1).max(200),
   body: z.string().trim().max(200_000).optional(),
+  // HTML is bulkier than the text it renders — 2x the plain-text cap is
+  // generous headroom, not a typo.
+  bodyHtml: z.string().trim().max(400_000).optional(),
 });
 
 export async function updateDocumentAction(_prevState, formData) {
@@ -124,6 +128,7 @@ export async function updateDocumentAction(_prevState, formData) {
     // (see loadText in lib/ingest/pipeline.js) — a hand-edit there would be
     // silently discarded on the next Retry, so only notes accept a body edit.
     body: doc.sourceType === "note" ? formData.get("body") : undefined,
+    bodyHtml: doc.sourceType === "note" ? formData.get("bodyHtml") : undefined,
   });
   if (!parsed.success) {
     return { error: "Title is required (max 200 chars); body max 200,000 chars." };
@@ -132,6 +137,11 @@ export async function updateDocumentAction(_prevState, formData) {
   const set = { title: parsed.data.title, updatedAt: new Date() };
   if (doc.sourceType === "note") {
     set.body = parsed.data.body;
+    // bodyHtml is null exactly when body is empty — decided by the plain
+    // text, since an empty Tiptap doc serializes to "<p></p>", not "".
+    // Written in the same set() as body so the two can never drift out of
+    // sync from a partial write.
+    set.bodyHtml = parsed.data.body ? sanitizeRichText(parsed.data.bodyHtml, "notes") : null;
     set.status = "pending";
     set.error = null;
   }

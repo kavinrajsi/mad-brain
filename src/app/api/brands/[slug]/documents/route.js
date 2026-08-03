@@ -7,6 +7,7 @@ import { db } from "@/lib/db/client";
 import { documents } from "@/lib/db/schema";
 import { ingestDocument } from "@/lib/ingest/pipeline";
 import { assertBrandBlobUrl, assertPublicHttpUrl } from "@/lib/ingest/url-guard";
+import { sanitizeRichText } from "@/lib/rich-text/sanitize";
 
 // Ingestion runs in after(), whose budget is this route's maxDuration. A large
 // brand book takes far longer than the default.
@@ -28,6 +29,7 @@ const schema = z.discriminatedUnion("sourceType", [
     sourceType: z.literal("note"),
     title: z.string().trim().min(1).max(200),
     body: z.string().trim().min(1).max(200_000),
+    bodyHtml: z.string().trim().max(400_000).optional(),
   }),
 ]);
 
@@ -71,6 +73,8 @@ export async function POST(request, { params }) {
       sourceUrl: payload.sourceType === "url" ? payload.sourceUrl : null,
       mime: payload.sourceType === "upload" ? (payload.mime ?? null) : null,
       body: payload.sourceType === "note" ? payload.body : null,
+      bodyHtml:
+        payload.sourceType === "note" ? sanitizeRichText(payload.bodyHtml, "notes") : null,
       createdBy: access.userId,
       status: "pending",
     })

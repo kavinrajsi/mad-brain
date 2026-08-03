@@ -98,15 +98,22 @@ export const brandProfiles = pgTable("brand_profiles", {
     .primaryKey()
     .references(() => brands.id, { onDelete: "cascade" }),
   mission: text("mission"),
+  // Presentation-only sanitized HTML mirrors. renderRubric/profileToText
+  // never read these — they use the plain fields, so the rubric prompt and
+  // the indexed profile document are never polluted by markup.
+  missionHtml: text("mission_html"),
   values: jsonb("values").default([]),
   tone: jsonb("tone").default([]),
   audience: text("audience"),
+  audienceHtml: text("audience_html"),
   dos: jsonb("dos").default([]),
   donts: jsonb("donts").default([]),
   visual: jsonb("visual").default([]),
   // Kapferer prism: { physique, personality, culture, relationship,
   // reflection, selfImage } — free text per facet.
   prism: jsonb("prism").default({}),
+  // Same facet-key shape as `prism`, holding sanitized HTML per facet.
+  prismHtml: jsonb("prism_html").default({}),
   // Rule book: hard rules, one string each. Rendered into the profile
   // document and the fit-check rubric alongside the dos/don'ts.
   rules: jsonb("rules").default([]),
@@ -131,6 +138,11 @@ export const documents = pgTable(
     // separate from document_chunks so re-ingesting can safely delete every
     // chunk without destroying the original.
     body: text("body"),
+    // Presentation-only sanitized HTML mirror of `body`, written only for
+    // sourceType:'note'. Ingestion/retrieval never reads this — they use
+    // `body`, which stays plain text so chunking/embeddings/citations are
+    // never polluted by markup.
+    bodyHtml: text("body_html"),
     status: documentStatus("status").notNull().default("pending"),
     error: text("error"),
     // Curated onboarding order for the brand's "Start here" reading path.

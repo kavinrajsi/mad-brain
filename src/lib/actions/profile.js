@@ -9,8 +9,12 @@ import { linesToArray, PRISM_FACETS, profileToText } from "@/lib/brand-profile";
 import { db } from "@/lib/db/client";
 import { brandProfiles, documents } from "@/lib/db/schema";
 import { ingestDocument } from "@/lib/ingest/pipeline";
+import { sanitizeRichText } from "@/lib/rich-text/sanitize";
 
 const textField = z.string().trim().max(4000);
+// HTML is bulkier than the text it renders — 3x the plain-text cap is
+// generous headroom, not a typo.
+const richTextField = z.string().trim().max(12_000).optional();
 
 export async function saveBrandProfileAction(_prevState, formData) {
   const slug = String(formData.get("brandSlug") ?? "");
@@ -19,28 +23,43 @@ export async function saveBrandProfileAction(_prevState, formData) {
 
   const mission = textField.safeParse(formData.get("mission") ?? "");
   const audience = textField.safeParse(formData.get("audience") ?? "");
-  if (!mission.success || !audience.success) {
+  const missionHtml = richTextField.safeParse(formData.get("missionHtml") ?? "");
+  const audienceHtml = richTextField.safeParse(formData.get("audienceHtml") ?? "");
+  if (!mission.success || !audience.success || !missionHtml.success || !audienceHtml.success) {
     return { error: "Mission and audience must be under 4000 characters." };
   }
 
   const prism = {};
+  const prismHtml = {};
   for (const facet of PRISM_FACETS) {
     const parsed = textField.safeParse(formData.get(`prism_${facet.key}`) ?? "");
-    if (!parsed.success) {
+    const parsedHtml = richTextField.safeParse(
+      formData.get(`prism_${facet.key}_html`) ?? "",
+    );
+    if (!parsed.success || !parsedHtml.success) {
       return { error: `${facet.label} must be under 4000 characters.` };
     }
-    if (parsed.data) prism[facet.key] = parsed.data;
+    if (parsed.data) {
+      prism[facet.key] = parsed.data;
+      // prismHtml is null exactly when the plain text is empty — decided by
+      // the plain text, since an empty Tiptap doc serializes to "<p></p>",
+      // not "". Both are written together below, never independently.
+      prismHtml[facet.key] = sanitizeRichText(parsedHtml.data, "compact");
+    }
   }
 
   const profile = {
     mission: mission.data || null,
+    missionHtml: mission.data ? sanitizeRichText(missionHtml.data, "compact") : null,
     audience: audience.data || null,
+    audienceHtml: audience.data ? sanitizeRichText(audienceHtml.data, "compact") : null,
     values: linesToArray(formData.get("values")),
     tone: linesToArray(formData.get("tone")),
     dos: linesToArray(formData.get("dos")),
     donts: linesToArray(formData.get("donts")),
     visual: linesToArray(formData.get("visual")),
     prism,
+    prismHtml,
     rules: linesToArray(formData.get("rules")),
   };
 

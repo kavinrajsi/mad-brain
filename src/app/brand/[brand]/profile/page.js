@@ -30,13 +30,16 @@ export default async function ProfilePage({ params }) {
         readOnly={!isAdmin}
         initial={{
           mission: profile?.mission ?? "",
+          missionHtml: profile?.missionHtml ?? null,
           audience: profile?.audience ?? "",
+          audienceHtml: profile?.audienceHtml ?? null,
           values: arrayToLines(profile?.values),
           tone: arrayToLines(profile?.tone),
           dos: arrayToLines(profile?.dos),
           donts: arrayToLines(profile?.donts),
           visual: arrayToLines(profile?.visual),
           prism: profile?.prism ?? {},
+          prismHtml: profile?.prismHtml ?? {},
           rules: arrayToLines(profile?.rules),
         }}
       />

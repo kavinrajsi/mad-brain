@@ -4,45 +4,58 @@ import { useActionState } from "react";
 
 import { saveBrandProfileAction } from "@/lib/actions/profile";
 import { PRISM_FACETS } from "@/lib/brand-profile";
+import RichTextField from "@/components/rich-text-field";
 
+// mission/audience are free-form prose (1-3 sentences) — rich text via
+// RichTextField ("rich"). The rest are jsonb arrays of short strings, faked
+// today as one-item-per-line textareas ("list", see linesToArray/
+// arrayToLines in brand-profile.js) — Tiptap serializes to one HTML blob
+// with no bare newlines, which would collapse a whole list into a single
+// array element, so these stay plain textareas rather than becoming rich
+// text fields. Order matches the original form layout.
 const FIELDS = [
   {
+    type: "rich",
     name: "mission",
     label: "Mission",
-    rows: 3,
     help: "What the brand exists to do. The thing that would still be true if the product changed.",
   },
   {
+    type: "list",
     name: "values",
     label: "Values",
     rows: 5,
     help: "One per line. Beliefs strong enough that you would turn down work over them.",
   },
   {
+    type: "list",
     name: "tone",
     label: "Tone of voice",
     rows: 5,
     help: "One per line. e.g. “Dry, never zany”, “Plain words over jargon”.",
   },
   {
+    type: "rich",
     name: "audience",
     label: "Audience",
-    rows: 3,
     help: "Who they are, what they care about, what they are sceptical of.",
   },
   {
+    type: "list",
     name: "dos",
     label: "Always do",
     rows: 5,
     help: "One per line.",
   },
   {
+    type: "list",
     name: "donts",
     label: "Never do",
     rows: 5,
     help: "One per line. These do the most work in a fit check — be specific.",
   },
   {
+    type: "list",
     name: "visual",
     label: "Visual rules",
     rows: 5,
@@ -69,14 +82,29 @@ export default function ProfileForm({ brandSlug, initial, readOnly }) {
             {field.label}
           </label>
           <p className="mt-1 text-xs leading-5 text-zinc-500">{field.help}</p>
-          <textarea
-            id={field.name}
-            name={field.name}
-            rows={field.rows}
-            readOnly={readOnly}
-            defaultValue={initial[field.name]}
-            className="mt-2 w-full rounded-lg border border-zinc-300 bg-transparent px-3 py-2 text-sm leading-6 outline-none read-only:opacity-70 focus:border-zinc-500 dark:border-zinc-700"
-          />
+          {field.type === "rich" ? (
+            <div className="mt-2">
+              <RichTextField
+                id={field.name}
+                name={field.name}
+                htmlName={`${field.name}Html`}
+                preset="compact"
+                readOnly={readOnly}
+                defaultValue={initial[field.name]}
+                defaultHtml={initial[`${field.name}Html`] ?? null}
+                minHeightClass="min-h-16"
+              />
+            </div>
+          ) : (
+            <textarea
+              id={field.name}
+              name={field.name}
+              rows={field.rows}
+              readOnly={readOnly}
+              defaultValue={initial[field.name]}
+              className="mt-2 w-full rounded-lg border border-zinc-300 bg-transparent px-3 py-2 text-sm leading-6 outline-none read-only:opacity-70 focus:border-zinc-500 dark:border-zinc-700"
+            />
+          )}
         </div>
       ))}
 
@@ -100,14 +128,18 @@ export default function ProfileForm({ brandSlug, initial, readOnly }) {
               <p className="mt-1 text-xs leading-5 text-zinc-500">
                 {facet.help}
               </p>
-              <textarea
-                id={`prism_${facet.key}`}
-                name={`prism_${facet.key}`}
-                rows={2}
-                readOnly={readOnly}
-                defaultValue={initial.prism?.[facet.key] ?? ""}
-                className="mt-2 w-full rounded-lg border border-zinc-300 bg-transparent px-3 py-2 text-sm leading-6 outline-none read-only:opacity-70 focus:border-zinc-500 dark:border-zinc-700"
-              />
+              <div className="mt-2">
+                <RichTextField
+                  id={`prism_${facet.key}`}
+                  name={`prism_${facet.key}`}
+                  htmlName={`prism_${facet.key}_html`}
+                  preset="compact"
+                  readOnly={readOnly}
+                  defaultValue={initial.prism?.[facet.key] ?? ""}
+                  defaultHtml={initial.prismHtml?.[facet.key] ?? null}
+                  minHeightClass="min-h-12"
+                />
+              </div>
             </div>
           ))}
         </div>
