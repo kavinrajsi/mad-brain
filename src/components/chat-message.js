@@ -107,7 +107,9 @@ export default function ChatMessage({ role, parts, metadata, brandSlug }) {
       </div>
       <div className="min-w-0 flex-1">
         <div className="text-sm leading-6 text-zinc-800 dark:text-zinc-200">
-          <Markdown>{text}</Markdown>
+          <Markdown citations={metadata?.citations} brandSlug={brandSlug}>
+            {text}
+          </Markdown>
         </div>
 
         {metadata?.sources?.length ? (

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
@@ -46,6 +46,41 @@ function CodeBlock({ language, children }) {
   );
 }
 
+// Citation badge target, e.g. `[1](citation:1)` — never a real URL, so it's
+// intercepted in the `a` component below instead of reaching the browser.
+const CITATION_HREF = /^citation:(\d+)$/;
+
+function CitationLink({ href, citationsByIndex, brandSlug, children, ...props }) {
+  const match = CITATION_HREF.exec(href ?? "");
+  const citation = match && citationsByIndex?.get(Number(match[1]));
+
+  if (!citation) {
+    // Marker didn't resolve to a known source (stale index, or a plain link
+    // that happens to read "citation:n") — fall back to a normal anchor.
+    return (
+      <a
+        className="underline underline-offset-2 hover:text-zinc-950 dark:hover:text-zinc-50"
+        target="_blank"
+        rel="noreferrer noopener"
+        href={href}
+        {...props}
+      >
+        {children}
+      </a>
+    );
+  }
+
+  return (
+    <a
+      href={`/brand/${brandSlug}/knowledge/${citation.documentId}`}
+      title={citation.title}
+      className="mx-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-zinc-100 px-1 align-super font-mono text-[10px] leading-none text-zinc-500 no-underline hover:bg-zinc-200 hover:text-zinc-900 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-700 dark:hover:text-zinc-100"
+    >
+      {match[1]}
+    </a>
+  );
+}
+
 const COMPONENTS = {
   p: (props) => <p className="my-3 first:mt-0 last:mb-0 leading-6" {...props} />,
   strong: (props) => (
@@ -68,14 +103,7 @@ const COMPONENTS = {
   h3: (props) => (
     <h3 className="mt-4 mb-1.5 text-sm font-semibold text-zinc-950 first:mt-0 dark:text-zinc-50" {...props} />
   ),
-  a: (props) => (
-    <a
-      className="underline underline-offset-2 hover:text-zinc-950 dark:hover:text-zinc-50"
-      target="_blank"
-      rel="noreferrer noopener"
-      {...props}
-    />
-  ),
+  // `a` is bound per-render (needs citationsByIndex/brandSlug) — see Markdown below.
   // Fenced code carries a "language-xxx" className from remark; inline code
   // does not — that distinction is what routes block code to CodeBlock and
   // leaves inline code as a plain pill.
@@ -119,10 +147,37 @@ const COMPONENTS = {
   ),
 };
 
-export default function Markdown({ children }) {
+const MARKER = /\[(\d+)\]/g;
+
+export default function Markdown({ children, citations, brandSlug }) {
+  const citationsByIndex = useMemo(() => {
+    if (!citations?.length) return null;
+    return new Map(citations.map((citation) => [citation.index, citation]));
+  }, [citations]);
+
+  // Rewrite recognized `[n]` markers into markdown links pointing at the
+  // citation: pseudo-scheme so CitationLink can intercept them; markers
+  // split across a streaming chunk boundary just don't match yet and render
+  // as plain text until the closing `]` arrives.
+  const text = citationsByIndex
+    ? String(children ?? "").replace(MARKER, (raw, index) =>
+        citationsByIndex.has(Number(index)) ? `[${index}](citation:${index})` : raw,
+      )
+    : children;
+
+  const components = useMemo(
+    () => ({
+      ...COMPONENTS,
+      a: (props) => (
+        <CitationLink {...props} citationsByIndex={citationsByIndex} brandSlug={brandSlug} />
+      ),
+    }),
+    [citationsByIndex, brandSlug],
+  );
+
   return (
-    <ReactMarkdown remarkPlugins={[remarkGfm]} components={COMPONENTS}>
-      {children}
+    <ReactMarkdown remarkPlugins={[remarkGfm]} components={components}>
+      {text}
     </ReactMarkdown>
   );
 }

@@ -106,6 +106,15 @@ export async function POST(request, { params }) {
     seen.add(chunk.documentId);
     sources.push({ documentId: chunk.documentId, title: chunk.documentTitle });
   }
+
+  // One entry per chunk (not deduped), indexed to match the [n] labels
+  // formatContext gives the model — lets inline citation markers in the
+  // streamed answer resolve back to a document.
+  const citations = chunks.map((chunk, index) => ({
+    index: index + 1,
+    documentId: chunk.documentId,
+    title: chunk.documentTitle,
+  }));
   let finishStepCostUsd = null;
 
   const result = streamText({
@@ -138,7 +147,7 @@ export async function POST(request, { params }) {
     // finish-step fires, so stashing its cost for the finish part needs no
     // cross-step summing.
     messageMetadata: ({ part }) => {
-      if (part.type === "start" && sources.length) return { sources };
+      if (part.type === "start" && sources.length) return { sources, citations };
       if (part.type === "finish-step") {
         finishStepCostUsd = part.providerMetadata?.openrouter?.usage?.cost ?? null;
         return undefined;

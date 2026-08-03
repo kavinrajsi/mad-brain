@@ -76,7 +76,13 @@ cover the question, say so plainly and suggest what document would need to be
 added — do not fill the gap from general knowledge about the category.
 
 Refer to the brand's documents by title when you use them. Keep answers short
-and concrete.`;
+and concrete.
+
+When a sentence draws on a CONTEXT passage, cite it inline immediately after
+that sentence using the passage's bracket number from CONTEXT, e.g. "...as
+stated in the brand guide [1]." Only use numbers that appear in CONTEXT. Do
+not invent numbers, and do not bundle citations at the end of the answer —
+place each one next to the specific claim it supports.`;
 
 /** Formats retrieved chunks for a prompt, tagged so the model can cite them. */
 export function formatContext(chunks) {
