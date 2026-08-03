@@ -89,7 +89,7 @@ export default function AskChat({ brandSlug, families, defaultModelId }) {
                   {message.metadata.sources.map((source) => (
                     <li key={source.documentId}>
                       <Link
-                        href={`/b/${brandSlug}/knowledge/${source.documentId}`}
+                        href={`/brand/${brandSlug}/knowledge/${source.documentId}`}
                         className="text-xs text-zinc-600 underline underline-offset-2 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
                       >
                         {source.title}

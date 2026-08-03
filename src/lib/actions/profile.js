@@ -94,14 +94,14 @@ export async function saveBrandProfileAction(_prevState, formData) {
   } catch (error) {
     // The profile itself saved; only indexing failed. Say so rather than
     // pretending the whole save went wrong.
-    revalidatePath(`/b/${slug}/profile`);
+    revalidatePath(`/brand/${slug}/profile`);
     return {
       ok: true,
       warning: `Saved, but indexing failed: ${String(error?.message ?? error)}`,
     };
   }
 
-  revalidatePath(`/b/${slug}/profile`);
-  revalidatePath(`/b/${slug}`);
+  revalidatePath(`/brand/${slug}/profile`);
+  revalidatePath(`/brand/${slug}`);
   return { ok: true };
 }

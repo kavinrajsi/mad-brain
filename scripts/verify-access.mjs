@@ -123,7 +123,7 @@ await check("signing in mints an httpOnly session cookie", async () => {
 });
 
 await check("a signed-out request never reaches brand data", async () => {
-  const page = await get(`/b/${brandA.slug}`);
+  const page = await get(`/brand/${brandA.slug}`);
   if (![302, 303, 307, 308].includes(page.status)) {
     throw new Error(`page returned ${page.status}, expected a redirect to /login`);
   }
@@ -142,7 +142,7 @@ await check("a signed-out request never reaches brand data", async () => {
 });
 
 await check("a member reaches their own brand", async () => {
-  const page = await get(`/b/${brandA.slug}`, owner.raw);
+  const page = await get(`/brand/${brandA.slug}`, owner.raw);
   if (page.status !== 200) throw new Error(`got ${page.status}`);
 
   const api = await get(`/api/brands/${brandA.slug}/documents`, owner.raw);
@@ -152,10 +152,10 @@ await check("a member reaches their own brand", async () => {
 
 await check("a non-member is refused another brand's pages", async () => {
   for (const path of [
-    `/b/${brandB.slug}`,
-    `/b/${brandB.slug}/knowledge`,
-    `/b/${brandB.slug}/check`,
-    `/b/${brandB.slug}/settings/members`,
+    `/brand/${brandB.slug}`,
+    `/brand/${brandB.slug}/knowledge`,
+    `/brand/${brandB.slug}/check`,
+    `/brand/${brandB.slug}/settings/members`,
   ]) {
     const response = await get(path, outsider.raw);
     if (response.status === 200) throw new Error(`LEAK: ${path} returned 200`);
@@ -188,8 +188,8 @@ await check("a non-member is refused another brand's API routes", async () => {
 });
 
 await check("a brand slug that does not exist is indistinguishable from one you cannot see", async () => {
-  const unknown = await get(`/b/${TAG}-does-not-exist`, outsider.raw);
-  const forbidden = await get(`/b/${brandB.slug}`, outsider.raw);
+  const unknown = await get(`/brand/${TAG}-does-not-exist`, outsider.raw);
+  const forbidden = await get(`/brand/${brandB.slug}`, outsider.raw);
   if (unknown.status !== forbidden.status) {
     throw new Error(
       `unknown brand ${unknown.status} vs forbidden brand ${forbidden.status} — slugs are probeable`,
@@ -236,7 +236,7 @@ await check("deleting a brand is reachable by admins but not by members", async 
       });
 
     const response = await get(
-      `/b/${brandA.slug}/settings/members`,
+      `/brand/${brandA.slug}/settings/members`,
       outsider.raw,
     );
     const html = response.status === 200 ? await response.text() : "";

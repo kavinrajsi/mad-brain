@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useActionState, useEffect, useState } from "react";
 
@@ -96,9 +97,12 @@ function DocumentRow({ brandSlug, doc, isAdmin }) {
     <li className="py-4">
       <div className="flex flex-wrap items-center gap-3">
         <span className="flex-1">
-          <span className="block text-sm text-zinc-950 dark:text-zinc-50">
+          <Link
+            href={`/brand/${brandSlug}/knowledge/${doc.id}`}
+            className="block text-sm text-zinc-950 hover:underline dark:text-zinc-50"
+          >
             {doc.title}
-          </span>
+          </Link>
           <span className="mt-0.5 flex items-center gap-2 text-xs text-zinc-400">
             <span>{SOURCE_LABELS[doc.sourceType] ?? doc.sourceType}</span>
             <span>·</span>

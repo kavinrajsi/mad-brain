@@ -26,7 +26,7 @@ export default async function AcceptInvitePage({ params }) {
   const result = await acceptInviteByToken({ token, userId: session.userId });
 
   if (result.ok) {
-    redirect(`/b/${result.brandSlug}`);
+    redirect(`/brand/${result.brandSlug}`);
   }
 
   return (

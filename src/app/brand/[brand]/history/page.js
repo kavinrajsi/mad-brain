@@ -53,7 +53,7 @@ export default async function HistoryPage({ params }) {
           {chats.map((chat) => (
             <li key={chat.id}>
               <Link
-                href={`/b/${slug}/history/chats/${chat.id}`}
+                href={`/brand/${slug}/history/chats/${chat.id}`}
                 className="block py-4 transition hover:bg-zinc-50 dark:hover:bg-zinc-900/50"
               >
                 <p className="line-clamp-2 text-sm leading-6 text-zinc-950 dark:text-zinc-50">

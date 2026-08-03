@@ -33,7 +33,7 @@ export default async function ChatHistoryPage({ params }) {
   return (
     <main className="mx-auto w-full max-w-3xl flex-1 px-6 py-12">
       <Link
-        href={`/b/${slug}/history`}
+        href={`/brand/${slug}/history`}
         className="font-mono text-xs text-zinc-500 hover:text-zinc-950 dark:hover:text-zinc-50"
       >
         ← History
@@ -73,7 +73,7 @@ export default async function ChatHistoryPage({ params }) {
                   {message.metadata.sources.map((source) => (
                     <li key={source.documentId}>
                       <Link
-                        href={`/b/${slug}/knowledge/${source.documentId}`}
+                        href={`/brand/${slug}/knowledge/${source.documentId}`}
                         className="text-xs text-zinc-600 underline underline-offset-2 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
                       >
                         {source.title}

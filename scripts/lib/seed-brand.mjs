@@ -146,6 +146,6 @@ export async function seedBrand({ slug, name, profile, documents: specs, ownerEm
     }
   }
 
-  console.log(`\nDone. Open /b/${slug}`);
+  console.log(`\nDone. Open /brand/${slug}`);
   return brand;
 }

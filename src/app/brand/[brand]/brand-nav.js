@@ -15,7 +15,7 @@ const TABS = [
 
 export default function BrandNav({ slug, role }) {
   const pathname = usePathname();
-  const base = `/b/${slug}`;
+  const base = `/brand/${slug}`;
   const isAdmin = role === "admin" || role === "owner";
 
   return (

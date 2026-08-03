@@ -30,7 +30,7 @@ export default async function CheckPage({ params }) {
         <p className="mt-6 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-200">
           This brand has no profile yet, so there is no rubric to score against
           and results will be vague.{" "}
-          <Link href={`/b/${slug}/profile`} className="font-medium underline">
+          <Link href={`/brand/${slug}/profile`} className="font-medium underline">
             Fill in the brand profile
           </Link>{" "}
           first.

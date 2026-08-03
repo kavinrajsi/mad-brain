@@ -60,7 +60,7 @@ export async function runFitCheckAction(_prevState, formData) {
     })
     .returning({ id: ideaChecks.id });
 
-  revalidatePath(`/b/${slug}/history`);
+  revalidatePath(`/brand/${slug}/history`);
 
   return { ok: true, checkId: saved.id, result, modelId };
 }

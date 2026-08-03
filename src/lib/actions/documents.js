@@ -52,7 +52,7 @@ export async function deleteDocumentAction(_prevState, formData) {
   // Chunks cascade with the document row.
   await db.delete(documents).where(eq(documents.id, doc.id));
 
-  revalidatePath(`/b/${slug}/knowledge`);
+  revalidatePath(`/brand/${slug}/knowledge`);
   return { ok: true };
 }
 
@@ -70,7 +70,7 @@ export async function retryIngestAction(_prevState, formData) {
     return { error: String(err?.message ?? err) };
   }
 
-  revalidatePath(`/b/${slug}/knowledge`);
+  revalidatePath(`/brand/${slug}/knowledge`);
   return { ok: true };
 }
 
@@ -95,8 +95,63 @@ export async function setPinnedOrderAction(_prevState, formData) {
     .set({ pinnedOrder: parsed.data, updatedAt: new Date() })
     .where(eq(documents.id, doc.id));
 
-  revalidatePath(`/b/${slug}`);
-  revalidatePath(`/b/${slug}/knowledge`);
+  revalidatePath(`/brand/${slug}`);
+  revalidatePath(`/brand/${slug}/knowledge`);
+  return { ok: true };
+}
+
+const updateSchema = z.object({
+  title: z.string().trim().min(1).max(200),
+  body: z.string().trim().max(200_000).optional(),
+});
+
+export async function updateDocumentAction(_prevState, formData) {
+  const slug = String(formData.get("brandSlug") ?? "");
+  const { error, doc } = await ownedDocument(
+    slug,
+    String(formData.get("documentId") ?? ""),
+  );
+  if (error) return { error };
+  // Already has its own editor at /brand/[brand]/profile; a second editable copy
+  // here would drift out of sync with what saveBrandProfileAction writes.
+  if (doc.sourceType === "profile") {
+    return { error: "Edit this from the brand profile page." };
+  }
+
+  const parsed = updateSchema.safeParse({
+    title: formData.get("title"),
+    // upload/url body is re-derived from blobUrl/sourceUrl on every ingest
+    // (see loadText in lib/ingest/pipeline.js) — a hand-edit there would be
+    // silently discarded on the next Retry, so only notes accept a body edit.
+    body: doc.sourceType === "note" ? formData.get("body") : undefined,
+  });
+  if (!parsed.success) {
+    return { error: "Title is required (max 200 chars); body max 200,000 chars." };
+  }
+
+  const set = { title: parsed.data.title, updatedAt: new Date() };
+  if (doc.sourceType === "note") {
+    set.body = parsed.data.body;
+    set.status = "pending";
+    set.error = null;
+  }
+  await db.update(documents).set(set).where(eq(documents.id, doc.id));
+
+  if (doc.sourceType === "note") {
+    try {
+      await ingestDocument(doc.id);
+    } catch (err) {
+      revalidatePath(`/brand/${slug}/knowledge/${doc.id}`);
+      revalidatePath(`/brand/${slug}/knowledge`);
+      return {
+        ok: true,
+        warning: `Saved, but indexing failed: ${String(err?.message ?? err)}`,
+      };
+    }
+  }
+
+  revalidatePath(`/brand/${slug}/knowledge/${doc.id}`);
+  revalidatePath(`/brand/${slug}/knowledge`);
   return { ok: true };
 }
 
@@ -111,6 +166,6 @@ export async function markReadAction(_prevState, formData) {
 
   await markDocumentRead({ userId: access.userId, documentId: doc.id });
 
-  revalidatePath(`/b/${slug}`);
+  revalidatePath(`/brand/${slug}`);
   return { ok: true };
 }

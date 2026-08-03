@@ -52,7 +52,7 @@ export default async function BrandHomePage({ params }) {
         <p className="mt-6 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-200">
           The brand profile is empty, so fit checks have no rubric to score
           against and will fall back to the documents alone.{" "}
-          <Link href={`/b/${slug}/profile`} className="font-medium underline">
+          <Link href={`/brand/${slug}/profile`} className="font-medium underline">
             Fill it in
           </Link>
           .
@@ -63,7 +63,7 @@ export default async function BrandHomePage({ params }) {
         {path.length === 0 ? (
           <p className="rounded-lg border border-dashed border-zinc-300 px-5 py-8 text-sm leading-6 text-zinc-500 dark:border-zinc-700">
             No reading path yet. An admin can pin documents in order on the{" "}
-            <Link href={`/b/${slug}/knowledge`} className="underline">
+            <Link href={`/brand/${slug}/knowledge`} className="underline">
               Knowledge
             </Link>{" "}
             tab to build one for new joiners.
@@ -73,7 +73,7 @@ export default async function BrandHomePage({ params }) {
             {path.map((item, index) => (
               <li key={item.id}>
                 <Link
-                  href={`/b/${slug}/knowledge/${item.id}`}
+                  href={`/brand/${slug}/knowledge/${item.id}`}
                   className="flex items-center gap-4 py-4 transition hover:opacity-70"
                 >
                   <span className="font-mono text-xs text-zinc-400">

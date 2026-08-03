@@ -35,7 +35,7 @@ export async function createBrandAction(_prevState, formData) {
     name: parsed.data,
     ownerId: session.userId,
   });
-  redirect(`/b/${brand.slug}`);
+  redirect(`/brand/${brand.slug}`);
 }
 
 export async function inviteMemberAction(_prevState, formData) {
@@ -66,7 +66,7 @@ export async function inviteMemberAction(_prevState, formData) {
     expiresAt,
   });
 
-  revalidatePath(`/b/${slug}/settings/members`);
+  revalidatePath(`/brand/${slug}/settings/members`);
   return { ok: true, token };
 }
 
@@ -82,7 +82,7 @@ export async function revokeInviteAction(_prevState, formData) {
     .delete(invites)
     .where(and(eq(invites.id, inviteId), eq(invites.brandId, access.brandId)));
 
-  revalidatePath(`/b/${slug}/settings/members`);
+  revalidatePath(`/brand/${slug}/settings/members`);
   return { ok: true };
 }
 
@@ -175,7 +175,7 @@ export async function changeRoleAction(_prevState, formData) {
       ),
     );
 
-  revalidatePath(`/b/${slug}/settings/members`);
+  revalidatePath(`/brand/${slug}/settings/members`);
   return { ok: true };
 }
 
@@ -211,6 +211,6 @@ export async function removeMemberAction(_prevState, formData) {
       ),
     );
 
-  revalidatePath(`/b/${slug}/settings/members`);
+  revalidatePath(`/brand/${slug}/settings/members`);
   return { ok: true };
 }

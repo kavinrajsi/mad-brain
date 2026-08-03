@@ -48,7 +48,7 @@ export default async function HomePage() {
           {brands.map((brand) => (
             <li key={brand.id}>
               <Link
-                href={`/b/${brand.slug}`}
+                href={`/brand/${brand.slug}`}
                 className="flex items-center justify-between gap-4 py-4 transition hover:opacity-70"
               >
                 <span>
