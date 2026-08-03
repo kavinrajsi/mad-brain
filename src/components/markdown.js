@@ -158,9 +158,12 @@ function CitationChip({ href, citationsByIndex, brandSlug, children, ...props })
             </span>
             <a
               href={`/brand/${brandSlug}/knowledge/${current.documentId}`}
-              className="mt-2 inline-block text-xs text-zinc-500 underline underline-offset-2 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
+              className="mt-2 inline-flex items-center gap-1 text-xs text-zinc-500 underline underline-offset-2 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
             >
-              Open document ↗
+              Open document
+              <svg viewBox="0 0 24 24" className="h-3 w-3" fill="currentColor">
+                <path d="M19 19H5V5h7V3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z" />
+              </svg>
             </a>
           </span>
         </>

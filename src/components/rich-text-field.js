@@ -45,9 +45,19 @@ const TOOLBAR_ITEMS = {
       activeKey: "heading2",
       run: (e) => e.chain().focus().toggleHeading({ level: 2 }).run(),
     },
-    { label: "•", activeKey: "bulletList", run: (e) => e.chain().focus().toggleBulletList().run() },
+    {
+      label: "Bullet list",
+      icon: "M4 10.5c-.83 0-1.5.67-1.5 1.5s.67 1.5 1.5 1.5 1.5-.67 1.5-1.5-.67-1.5-1.5-1.5zm0-6c-.83 0-1.5.67-1.5 1.5S3.17 7.5 4 7.5 5.5 6.83 5.5 6 4.83 4.5 4 4.5zm0 12c-.83 0-1.5.68-1.5 1.5s.68 1.5 1.5 1.5 1.5-.68 1.5-1.5-.67-1.5-1.5-1.5zM7 19h14v-2H7v2zm0-6h14v-2H7v2zm0-8v2h14V5H7z",
+      activeKey: "bulletList",
+      run: (e) => e.chain().focus().toggleBulletList().run(),
+    },
     { label: "1.", activeKey: "orderedList", run: (e) => e.chain().focus().toggleOrderedList().run() },
-    { label: "”", activeKey: "blockquote", run: (e) => e.chain().focus().toggleBlockquote().run() },
+    {
+      label: "Blockquote",
+      icon: "M6 17h3l2-4V7H5v6h3zm8 0h3l2-4V7h-6v6h3z",
+      activeKey: "blockquote",
+      run: (e) => e.chain().focus().toggleBlockquote().run(),
+    },
   ],
   compact: [
     { label: "B", activeKey: "bold", run: (e) => e.chain().focus().toggleBold().run() },
@@ -209,11 +219,19 @@ export default function RichTextField({
               <button
                 key={item.label}
                 type="button"
+                title={item.icon ? item.label : undefined}
+                aria-label={item.icon ? item.label : undefined}
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={() => item.run(editor)}
                 className={`${TOOLBAR_BUTTON_CLASS} ${active?.[item.activeKey] ? TOOLBAR_BUTTON_ACTIVE_CLASS : ""}`}
               >
-                {item.label}
+                {item.icon ? (
+                  <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="currentColor">
+                    <path d={item.icon} />
+                  </svg>
+                ) : (
+                  item.label
+                )}
               </button>
             ))}
             <LinkButton editor={editor} active={active?.link} />

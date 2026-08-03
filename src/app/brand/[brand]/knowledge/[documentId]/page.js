@@ -51,9 +51,12 @@ export default async function DocumentPage({ params }) {
     <main className="mx-auto w-full max-w-3xl flex-1 px-6 py-12">
       <Link
         href={`/brand/${slug}/knowledge`}
-        className="font-mono text-xs text-zinc-400 transition hover:text-zinc-600"
+        className="inline-flex items-center gap-1 font-mono text-xs text-zinc-400 transition hover:text-zinc-600"
       >
-        ← Knowledge
+        <svg viewBox="0 0 24 24" className="h-3 w-3" fill="currentColor">
+          <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z" />
+        </svg>
+        Knowledge
       </Link>
 
       <DocumentDetail
