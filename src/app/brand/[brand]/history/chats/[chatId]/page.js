@@ -12,6 +12,20 @@ export const metadata = {
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+/** The question a given assistant turn was answering — the nearest
+ * preceding user message in the same conversation, for the trace diagram
+ * (src/components/answer-trace.js). */
+function precedingUserText(messages, index) {
+  for (let i = index - 1; i >= 0; i--) {
+    if (messages[i].role !== "user") continue;
+    return (messages[i].parts ?? [])
+      .filter((part) => part.type === "text")
+      .map((part) => part.text)
+      .join(" ");
+  }
+  return undefined;
+}
+
 export default async function ChatHistoryPage({ params }) {
   const { brand: slug, chatId } = await params;
   const access = await requireBrandRole(slug);
@@ -43,13 +57,19 @@ export default async function ChatHistoryPage({ params }) {
       </p>
 
       <div className="mt-8 space-y-6">
-        {chat.messages.map((message) => (
+        {chat.messages.map((message, index) => (
           <ChatMessage
             key={message.id}
             role={message.role}
             parts={message.parts}
             metadata={message.metadata}
             brandSlug={slug}
+            query={
+              message.role === "assistant"
+                ? precedingUserText(chat.messages, index)
+                : undefined
+            }
+            fallbackModelId={chat.modelId}
           />
         ))}
       </div>

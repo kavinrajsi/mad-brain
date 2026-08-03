@@ -17,6 +17,20 @@ const STARTERS = [
 const MAX_TEXTAREA_HEIGHT = 200;
 const MAX_IMAGES = 4;
 
+/** The question a given assistant turn was answering — the nearest
+ * preceding user message in the same conversation, for the trace diagram
+ * (src/components/answer-trace.js). */
+function precedingUserText(messages, index) {
+  for (let i = index - 1; i >= 0; i--) {
+    if (messages[i].role !== "user") continue;
+    return (messages[i].parts ?? [])
+      .filter((part) => part.type === "text")
+      .map((part) => part.text)
+      .join(" ");
+  }
+  return undefined;
+}
+
 function ModelPicker({ families, modelId, onChange, requireVision }) {
   const [open, setOpen] = useState(false);
   const current = families
@@ -278,13 +292,15 @@ export default function AskChat({ brandSlug, families, defaultModelId }) {
           </div>
         ) : null}
 
-        {messages.map((message) => (
+        {messages.map((message, index) => (
           <ChatMessage
             key={message.id}
             role={message.role}
             parts={message.parts}
             metadata={message.metadata}
             brandSlug={brandSlug}
+            query={message.role === "assistant" ? precedingUserText(messages, index) : undefined}
+            fallbackModelId={modelId}
           />
         ))}
 

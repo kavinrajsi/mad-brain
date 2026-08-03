@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 
+import AnswerTrace from "@/components/answer-trace";
 import Markdown from "@/components/markdown";
 import { formatUsage } from "@/lib/ai/format-usage";
 
@@ -71,7 +72,7 @@ function Sources({ brandSlug, sources }) {
   );
 }
 
-export default function ChatMessage({ role, parts, metadata, brandSlug }) {
+export default function ChatMessage({ role, parts, metadata, brandSlug, query, fallbackModelId }) {
   const text = partsText(parts);
   const images = imageParts(parts);
 
@@ -115,6 +116,13 @@ export default function ChatMessage({ role, parts, metadata, brandSlug }) {
         {metadata?.sources?.length ? (
           <Sources brandSlug={brandSlug} sources={metadata.sources} />
         ) : null}
+
+        <AnswerTrace
+          query={query}
+          citations={metadata?.citations}
+          sources={metadata?.sources}
+          modelId={metadata?.modelId ?? fallbackModelId}
+        />
 
         <div className="flex items-center gap-2">
           {text ? <CopyButton text={text} /> : null}

@@ -115,11 +115,15 @@ export async function POST(request, { params }) {
     documentId: chunk.documentId,
     title: chunk.documentTitle,
     snippet: chunk.content.slice(0, 220).trim(),
+    // Pinecone cosine similarity, 0-1 — feeds the "how this was answered"
+    // trace's per-passage confidence bars.
+    score: Math.round(chunk.score * 100) / 100,
   }));
+  const modelId = resolveModelId(payload.modelId ?? "");
   let finishStepCostUsd = null;
 
   const result = streamText({
-    model: chatModel(resolveModelId(payload.modelId ?? "")),
+    model: chatModel(modelId),
     system: `${CHAT_SYSTEM}\n\nBrand: ${access.name}\n\nCONTEXT\n${
       chunks.length
         ? formatContext(chunks)
@@ -148,7 +152,7 @@ export async function POST(request, { params }) {
     // finish-step fires, so stashing its cost for the finish part needs no
     // cross-step summing.
     messageMetadata: ({ part }) => {
-      if (part.type === "start" && sources.length) return { sources, citations };
+      if (part.type === "start" && sources.length) return { sources, citations, modelId };
       if (part.type === "finish-step") {
         finishStepCostUsd = part.providerMetadata?.openrouter?.usage?.cost ?? null;
         return undefined;
@@ -168,7 +172,7 @@ export async function POST(request, { params }) {
           chatId: payload.chatId,
           brandId: access.brandId,
           userId: access.userId,
-          modelId: resolveModelId(payload.modelId ?? ""),
+          modelId,
           title: query.slice(0, 120) || "Untitled chat",
           messages,
         });
