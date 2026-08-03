@@ -2,8 +2,7 @@
 
 import { useRef, useState } from "react";
 
-import { EditorContent, useEditor } from "@tiptap/react";
-import { BubbleMenu } from "@tiptap/react/menus";
+import { EditorContent, useEditor, useEditorState } from "@tiptap/react";
 import { Placeholder } from "@tiptap/extensions/placeholder";
 import StarterKit from "@tiptap/starter-kit";
 
@@ -26,38 +25,40 @@ export const RICH_TEXT_VIEW_CLASSES =
   "[&_a]:underline [&_a]:underline-offset-2 " +
   "[&_hr]:my-5 [&_hr]:border-zinc-200 dark:[&_hr]:border-zinc-800";
 
+// Each item's activeKey maps to a boolean computed once per selection change
+// by useToolbarActiveState below, rather than every button calling
+// editor.isActive() inline on every render.
 const TOOLBAR_ITEMS = {
   notes: [
-    { label: "B", name: "bold", run: (e) => e.chain().focus().toggleBold().run() },
-    { label: "I", name: "italic", run: (e) => e.chain().focus().toggleItalic().run() },
-    { label: "U", name: "underline", run: (e) => e.chain().focus().toggleUnderline().run() },
-    { label: "S", name: "strike", run: (e) => e.chain().focus().toggleStrike().run() },
-    { label: "</>", name: "code", run: (e) => e.chain().focus().toggleCode().run() },
+    { label: "B", activeKey: "bold", run: (e) => e.chain().focus().toggleBold().run() },
+    { label: "I", activeKey: "italic", run: (e) => e.chain().focus().toggleItalic().run() },
+    { label: "U", activeKey: "underline", run: (e) => e.chain().focus().toggleUnderline().run() },
+    { label: "S", activeKey: "strike", run: (e) => e.chain().focus().toggleStrike().run() },
+    { label: "</>", activeKey: "code", run: (e) => e.chain().focus().toggleCode().run() },
     {
       label: "H1",
-      name: "heading",
-      attrs: { level: 1 },
+      activeKey: "heading1",
       run: (e) => e.chain().focus().toggleHeading({ level: 1 }).run(),
     },
     {
       label: "H2",
-      name: "heading",
-      attrs: { level: 2 },
+      activeKey: "heading2",
       run: (e) => e.chain().focus().toggleHeading({ level: 2 }).run(),
     },
-    { label: "•", name: "bulletList", run: (e) => e.chain().focus().toggleBulletList().run() },
-    { label: "1.", name: "orderedList", run: (e) => e.chain().focus().toggleOrderedList().run() },
-    { label: "”", name: "blockquote", run: (e) => e.chain().focus().toggleBlockquote().run() },
+    { label: "•", activeKey: "bulletList", run: (e) => e.chain().focus().toggleBulletList().run() },
+    { label: "1.", activeKey: "orderedList", run: (e) => e.chain().focus().toggleOrderedList().run() },
+    { label: "”", activeKey: "blockquote", run: (e) => e.chain().focus().toggleBlockquote().run() },
   ],
   compact: [
-    { label: "B", name: "bold", run: (e) => e.chain().focus().toggleBold().run() },
-    { label: "I", name: "italic", run: (e) => e.chain().focus().toggleItalic().run() },
+    { label: "B", activeKey: "bold", run: (e) => e.chain().focus().toggleBold().run() },
+    { label: "I", activeKey: "italic", run: (e) => e.chain().focus().toggleItalic().run() },
   ],
 };
 
 const TOOLBAR_BUTTON_CLASS =
-  "rounded px-2 py-1 text-xs font-medium text-zinc-300 transition hover:bg-zinc-800 hover:text-zinc-50";
-const TOOLBAR_BUTTON_ACTIVE_CLASS = "bg-zinc-800 text-zinc-50";
+  "rounded px-2 py-1 text-xs font-medium text-zinc-500 transition hover:bg-zinc-200 hover:text-zinc-950 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-50";
+const TOOLBAR_BUTTON_ACTIVE_CLASS =
+  "bg-zinc-200 text-zinc-950 dark:bg-zinc-800 dark:text-zinc-50";
 
 function extensionsFor(preset, placeholder) {
   const kit =
@@ -90,7 +91,30 @@ function initialContent(defaultHtml, defaultValue) {
   };
 }
 
-function LinkButton({ editor }) {
+/** Subscribes to editor selection/content changes so the fixed toolbar's
+ * active-button highlighting stays live without re-rendering on every
+ * keystroke (useEditorState only re-renders when the selector's result
+ * actually changes). */
+function useToolbarActiveState(editor) {
+  return useEditorState({
+    editor,
+    selector: ({ editor }) => ({
+      bold: !!editor?.isActive("bold"),
+      italic: !!editor?.isActive("italic"),
+      underline: !!editor?.isActive("underline"),
+      strike: !!editor?.isActive("strike"),
+      code: !!editor?.isActive("code"),
+      heading1: !!editor?.isActive("heading", { level: 1 }),
+      heading2: !!editor?.isActive("heading", { level: 2 }),
+      bulletList: !!editor?.isActive("bulletList"),
+      orderedList: !!editor?.isActive("orderedList"),
+      blockquote: !!editor?.isActive("blockquote"),
+      link: !!editor?.isActive("link"),
+    }),
+  });
+}
+
+function LinkButton({ editor, active }) {
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState("");
 
@@ -115,7 +139,7 @@ function LinkButton({ editor }) {
         }}
         onBlur={() => setEditing(false)}
         placeholder="https://…"
-        className="w-40 rounded bg-zinc-800 px-2 py-1 text-xs text-zinc-50 outline-none placeholder:text-zinc-500"
+        className="w-40 rounded bg-zinc-100 px-2 py-1 text-xs text-zinc-950 outline-none placeholder:text-zinc-400 dark:bg-zinc-800 dark:text-zinc-50 dark:placeholder:text-zinc-500"
       />
     );
   }
@@ -128,7 +152,7 @@ function LinkButton({ editor }) {
         setValue(editor.getAttributes("link").href ?? "");
         setEditing(true);
       }}
-      className={`${TOOLBAR_BUTTON_CLASS} ${editor.isActive("link") ? TOOLBAR_BUTTON_ACTIVE_CLASS : ""}`}
+      className={`${TOOLBAR_BUTTON_CLASS} ${active ? TOOLBAR_BUTTON_ACTIVE_CLASS : ""}`}
     >
       Link
     </button>
@@ -168,6 +192,7 @@ export default function RichTextField({
     },
   });
 
+  const active = useToolbarActiveState(editor);
   const items = TOOLBAR_ITEMS[preset] ?? TOOLBAR_ITEMS.notes;
 
   return (
@@ -175,27 +200,29 @@ export default function RichTextField({
       <textarea ref={textareaRef} id={id} name={name} defaultValue={defaultValue} className="hidden" />
       <input ref={htmlInputRef} type="hidden" name={resolvedHtmlName} defaultValue={defaultHtml ?? ""} />
 
-      {editor && !readOnly ? (
-        <BubbleMenu editor={editor} className="flex items-center gap-0.5 rounded-lg bg-zinc-950 p-1 shadow-lg">
-          {items.map((item) => (
-            <button
-              key={item.label}
-              type="button"
-              onMouseDown={(e) => e.preventDefault()}
-              onClick={() => item.run(editor)}
-              className={`${TOOLBAR_BUTTON_CLASS} ${editor.isActive(item.name, item.attrs) ? TOOLBAR_BUTTON_ACTIVE_CLASS : ""}`}
-            >
-              {item.label}
-            </button>
-          ))}
-          <LinkButton editor={editor} />
-        </BubbleMenu>
-      ) : null}
-
       <div
-        className={`rounded-lg border border-zinc-300 bg-transparent px-3 py-2 focus-within:border-zinc-500 dark:border-zinc-700 ${minHeightClass} ${readOnly ? "opacity-70" : ""}`}
+        className={`overflow-hidden rounded-lg border border-zinc-300 focus-within:border-zinc-500 dark:border-zinc-700 ${readOnly ? "opacity-70" : ""}`}
       >
-        <EditorContent editor={editor} />
+        {editor && !readOnly ? (
+          <div className="flex flex-wrap items-center gap-0.5 border-b border-zinc-200 bg-zinc-50 px-2 py-1.5 dark:border-zinc-800 dark:bg-zinc-900">
+            {items.map((item) => (
+              <button
+                key={item.label}
+                type="button"
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => item.run(editor)}
+                className={`${TOOLBAR_BUTTON_CLASS} ${active?.[item.activeKey] ? TOOLBAR_BUTTON_ACTIVE_CLASS : ""}`}
+              >
+                {item.label}
+              </button>
+            ))}
+            <LinkButton editor={editor} active={active?.link} />
+          </div>
+        ) : null}
+
+        <div className={`bg-transparent px-3 py-2 ${minHeightClass}`}>
+          <EditorContent editor={editor} />
+        </div>
       </div>
     </div>
   );
