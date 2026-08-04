@@ -119,9 +119,12 @@ export default function ChatMessage({ role, parts, metadata, brandSlug, query, f
 
         <AnswerTrace
           query={query}
+          text={text}
           citations={metadata?.citations}
           sources={metadata?.sources}
           modelId={metadata?.modelId ?? fallbackModelId}
+          usage={metadata?.usage}
+          brandSlug={brandSlug}
         />
 
         <div className="flex items-center gap-2">
